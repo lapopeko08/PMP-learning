@@ -134,7 +134,8 @@
     nav.toc .toc-inner { padding:16px 2px 0; }
     h3.sec { font-size:22px; }
     table.wt td, table.wt th { padding:9px 10px; font-size:13px; }
-    .edit-toggle, .editbar { display:none !important; }   /* editing is Mac-only */
+    .edit-toggle { right:16px; bottom:16px; }
+    .editbar { bottom:14px; }
   }
 </style>
 </head>
@@ -313,6 +314,9 @@
   const $  = (s, r=document) => r.querySelector(s);
   const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
   const HSEL = 'main .part, main .sec, main .sub, main .subsub';
+
+  // Where to commit when opened via the published link (public — safe to expose):
+  const GH = { owner:'lapopeko08', repo:'PMP-learning', branch:'main', path:'index.html' };
 
   /* ---------- helpers ---------- */
   const escapeHtml = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -506,8 +510,7 @@
     setTimeout(() => URL.revokeObjectURL(url), 2000);
     toast('Downloaded index.html — drop it into your iCloud PMP-Learning-Notes folder to replace the old one.');
   }
-  async function save(){
-    const html = buildSaveHtml();
+  async function saveLocal(html){
     if (window.showSaveFilePicker){
       try {
         const handle = await getHandle();
@@ -521,6 +524,44 @@
       }
     }
     downloadHtml(html);
+  }
+
+  /* ---------- save to GitHub (when opened via the published link) ---------- */
+  function b64(str){ const bytes = new TextEncoder().encode(str); let bin=''; for (const b of bytes) bin += String.fromCharCode(b); return btoa(bin); }
+  function getToken(){
+    let t = localStorage.getItem('gh-token');
+    if (!t){
+      t = (window.prompt('Paste your GitHub token to save.\n(Fine-grained token with Contents: Read & write on PMP-learning. It is stored only on this device.)') || '').trim();
+      if (t) localStorage.setItem('gh-token', t);
+    }
+    return t;
+  }
+  function clearToken(){ localStorage.removeItem('gh-token'); }
+  async function saveToGitHub(html){
+    const token = getToken();
+    if (!token){ toast('Save cancelled — no token entered.'); return; }
+    const base = `https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`;
+    const headers = { Authorization:`Bearer ${token}`, Accept:'application/vnd.github+json' };
+    try {
+      toast('Saving to GitHub…');
+      let sha;
+      const g = await fetch(`${base}?ref=${GH.branch}`, { headers });
+      if (g.ok) sha = (await g.json()).sha;
+      else if (g.status === 401){ clearToken(); toast('Token rejected. Tap Save again to re-enter it.'); return; }
+      const put = await fetch(base, {
+        method:'PUT', headers:{ ...headers, 'Content-Type':'application/json' },
+        body: JSON.stringify({ message:'Update PMP notes', content:b64(html), branch:GH.branch, ...(sha ? { sha } : {}) })
+      });
+      if (put.ok) toast('Saved to GitHub ✓  The page refreshes everywhere in ~1 min.');
+      else if (put.status === 401){ clearToken(); toast('Token rejected. Tap Save again to re-enter it.'); }
+      else { console.error(await put.text()); toast('GitHub save failed (' + put.status + '). See console.'); }
+    } catch(e){ console.error(e); toast('Network error while saving to GitHub.'); }
+  }
+
+  async function save(){
+    const html = buildSaveHtml();
+    if (location.protocol === 'http:' || location.protocol === 'https:') await saveToGitHub(html);
+    else await saveLocal(html);
   }
 
   /* ---------- wire up controls ---------- */
