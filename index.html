@@ -1,11 +1,12 @@
 <!DOCTYPE html>
-<html lang="en"><head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>PMP Learning Notes</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
     /* ---- Minimalist earth palette ---- */
@@ -69,7 +70,8 @@
   h4.sub { font-size:16px; font-weight:600; color:var(--ink); margin:30px 0 10px; padding-left:12px; border-left:3px solid var(--olive); }
   h5.subsub { font-size:11.5px; font-weight:600; text-transform:uppercase; letter-spacing:.12em; color:var(--olive); margin:22px 0 8px; }
 
-  .doc-block > p { margin:10px 0; font-size:15px; line-height:1.7; color:#2b2b2b; }
+  .doc-block > p, .doc-block > div, #main > div { margin:10px 0; font-size:15px; line-height:1.7; color:#2b2b2b; }
+  .doc-block > p:empty, .doc-block > div:empty { min-height:1.1em; }
   p.indent { margin-left:32px; }
   p.tab { margin-left:32px; }
 
@@ -150,7 +152,7 @@
   }
 </style>
 </head>
-<body class="">
+<body>
 
 <header>
   <h1>PMP Learning Notes</h1>
@@ -164,7 +166,18 @@
     <button class="toc-toggle" id="tocToggle">Table of Contents ▾</button>
     <div class="toc-inner">
       <h2>Contents</h2>
-      <ul><li><a class="lvl-sec" href="#overview">Overview</a></li><li><a class="lvl-part" href="#part1">Part 1. The purpose of Standard for Project Management</a></li><li><a class="lvl-sec" href="#sec1">Section 1. Introduction</a></li><li><a class="lvl-sub" href="#s1-2">1.2 Key Terms and Concept</a></li><li><a class="lvl-sub" href="#s1-3">1.3 Elements of Project Management</a></li><li><a class="lvl-subsub" href="#s1-3-3">1.3.3 Operations and Project management</a></li><li><a class="lvl-subsub" href="#s1-3-4">1.3.4 Portfolio vs Program vs Project</a></li><li><a class="lvl-sec" href="#sec2">Section 2. A System for Value Delivery</a></li><li><a class="lvl-sub" href="#s2-1">2.1 Creating value</a></li><li><a class="lvl-sub" href="#s2-2">2.2 Project Environment</a></li><li><a class="lvl-sub" href="#new-sub-heading">2.3 Product management</a></li><li><a class="lvl-sub" href="#new-sub-heading-2">2.5 Project Management Roles</a></li><li><a class="lvl-sec" href="#new-section">Section 3. Project Management Principles</a></li><li><a class="lvl-sec" href="#new-section">Describe the mindset of Project Manager, which composed of 3 dimensions and how it relates to 6 principles</a></li></ul>
+      <ul>
+        <li><a class="lvl-sec" href="#overview">Overview</a></li>
+        <li><a class="lvl-part" href="#part1">Part 1. The purpose of Standard for Project Management</a></li>
+        <li><a class="lvl-sec" href="#sec1">Section 1. Introduction</a></li>
+        <li><a class="lvl-sub" href="#s1-2">1.2 Key Terms and Concept</a></li>
+        <li><a class="lvl-sub" href="#s1-3">1.3 Elements of Project Management</a></li>
+        <li><a class="lvl-subsub" href="#s1-3-3">1.3.3 Operations and Project management</a></li>
+        <li><a class="lvl-subsub" href="#s1-3-4">1.3.4 Portfolio vs Program vs Project</a></li>
+        <li><a class="lvl-sec" href="#sec2">Section 2. A System for Value Delivery</a></li>
+        <li><a class="lvl-sub" href="#s2-1">2.1 Creating value</a></li>
+        <li><a class="lvl-sub" href="#s2-2">2.2 Project Environment</a></li>
+      </ul>
     </div>
   </nav>
 
@@ -646,6 +659,22 @@
     const img = e.target.closest('img.note-img');
     if (img){ e.preventDefault(); selectImg(img); } else { hideImgbar(); }
   });
+
+  // Pressing Enter at the end of a heading should start a normal paragraph, not a second heading.
+  main.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' || e.shiftKey) return;
+    if (!document.body.classList.contains('edit-on')) return;
+    const sel = window.getSelection(); if (!sel || !sel.rangeCount) return;
+    let node = sel.anchorNode; if (node && node.nodeType === 3) node = node.parentElement;
+    const heading = node && node.closest && node.closest('#main h2, #main h3, #main h4, #main h5');
+    if (!heading) return;                       // normal text: let the browser split the paragraph
+    e.preventDefault();
+    const p = document.createElement('p'); p.className = 'doc'; p.innerHTML = '<br>';
+    heading.insertAdjacentElement('afterend', p);
+    const r = document.createRange(); r.setStart(p, 0); r.collapse(true);
+    sel.removeAllRanges(); sel.addRange(r);
+    p.scrollIntoView({ block:'nearest' });
+  });
   imgRange.addEventListener('input', () => {
     if (!selImg) return; selImg.style.width = imgRange.value + '%'; imgPct.textContent = imgRange.value + '%';
   });
@@ -663,6 +692,5 @@
   });
 })();
 </script>
-
-
-</body></html>
+</body>
+</html>
