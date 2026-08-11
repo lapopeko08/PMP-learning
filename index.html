@@ -131,6 +131,9 @@
   #imgbar button{ font-family:var(--font); font-size:12px; font-weight:600; color:var(--ink); background:#fff; border:none; border-radius:6px; padding:6px 9px; cursor:pointer; }
   #imgbar button:hover{ background:var(--sand); }
   #imgbar button.danger{ background:#b23b3b; color:#fff; }
+  #imgHandle { position:fixed; z-index:43; width:20px; height:20px; background:var(--olive); border:2px solid #fff;
+    border-radius:4px; box-shadow:0 1px 5px rgba(0,0,0,.45); cursor:nwse-resize; display:none; touch-action:none; }
+  #imgHandle.show { display:block; }
 
   /* ---------- Mobile ---------- */
   .toc-toggle { display:none; }
@@ -323,6 +326,7 @@
   <button data-w="100">Full</button>
   <button class="danger" id="imgDel">Delete</button>
 </div>
+<div id="imgHandle"></div>
 
 <script>
 /* ============================================================
@@ -494,6 +498,7 @@
     const ts = clone.querySelector('#toast'); if (ts) ts.remove();
     clone.querySelectorAll('.note-img.sel').forEach(el => el.classList.remove('sel'));
     const ib = clone.querySelector('#imgbar'); if (ib) ib.classList.remove('show');
+    const ih = clone.querySelector('#imgHandle'); if (ih) ih.classList.remove('show');
     rebuildToc(clone);                       // bake a correct static TOC into the saved file
     return '<!DOCTYPE html>\n' + clone.outerHTML + '\n';
   }
@@ -612,8 +617,8 @@
   });
 
   /* ---------- image attach + resize ---------- */
-  const imgInput = $('#imgInput'), imgbar = $('#imgbar'), imgRange = $('#imgRange'), imgPct = $('#imgPct');
-  let selImg = null;
+  const imgInput = $('#imgInput'), imgbar = $('#imgbar'), imgRange = $('#imgRange'), imgPct = $('#imgPct'), imgHandle = $('#imgHandle');
+  let selImg = null, drag = null;
 
   function addImage(){ imgInput.value = ''; imgInput.click(); }
   imgInput.addEventListener('change', () => {
@@ -640,19 +645,54 @@
     reader.readAsDataURL(file);
   });
 
+  function curPct(img){
+    // current width as a % of its container (works whether width is set in % or px)
+    const cont = (img.parentElement ? img.parentElement.clientWidth : main.clientWidth) || 1;
+    return Math.max(10, Math.min(100, Math.round(img.getBoundingClientRect().width / cont * 100)));
+  }
+  function setPct(pct){
+    if (!selImg) return;
+    selImg.style.width = pct + '%';
+    imgRange.value = pct; imgPct.textContent = pct + '%';
+    positionImgbar(selImg); positionHandle(selImg);
+  }
   function positionImgbar(img){
     const r = img.getBoundingClientRect();
     imgbar.style.left = Math.max(10, Math.min(window.innerWidth - 300, r.left)) + 'px';
     imgbar.style.top  = Math.max(66, r.top - 52) + 'px';
   }
+  function positionHandle(img){
+    const r = img.getBoundingClientRect();
+    imgHandle.style.left = (r.right - 10) + 'px';
+    imgHandle.style.top  = (r.bottom - 10) + 'px';
+  }
   function selectImg(img){
     if (selImg) selImg.classList.remove('sel');
     selImg = img; img.classList.add('sel');
-    const pct = parseInt(img.style.width, 10) || 60;
+    const pct = curPct(img);
     imgRange.value = pct; imgPct.textContent = pct + '%';
-    positionImgbar(img); imgbar.classList.add('show');
+    positionImgbar(img); positionHandle(img);
+    imgbar.classList.add('show'); imgHandle.classList.add('show');
   }
-  function hideImgbar(){ if (selImg){ selImg.classList.remove('sel'); selImg = null; } imgbar.classList.remove('show'); }
+  function hideImgbar(){
+    if (selImg){ selImg.classList.remove('sel'); selImg = null; }
+    imgbar.classList.remove('show'); imgHandle.classList.remove('show');
+  }
+
+  // Drag the corner handle to resize (mouse + touch via pointer events).
+  imgHandle.addEventListener('pointerdown', e => {
+    if (!selImg) return;
+    e.preventDefault();
+    const cont = (selImg.parentElement ? selImg.parentElement.clientWidth : main.clientWidth) || 1;
+    drag = { x:e.clientX, w:selImg.getBoundingClientRect().width, cont };
+    try { imgHandle.setPointerCapture(e.pointerId); } catch(_){}
+  });
+  imgHandle.addEventListener('pointermove', e => {
+    if (!drag || !selImg) return;
+    const pct = Math.max(10, Math.min(100, Math.round((drag.w + (e.clientX - drag.x)) / drag.cont * 100)));
+    setPct(pct);
+  });
+  imgHandle.addEventListener('pointerup', e => { drag = null; try { imgHandle.releasePointerCapture(e.pointerId); } catch(_){} });
 
   main.addEventListener('click', e => {
     if (!document.body.classList.contains('edit-on')) return;
@@ -675,15 +715,13 @@
     sel.removeAllRanges(); sel.addRange(r);
     p.scrollIntoView({ block:'nearest' });
   });
-  imgRange.addEventListener('input', () => {
-    if (!selImg) return; selImg.style.width = imgRange.value + '%'; imgPct.textContent = imgRange.value + '%';
-  });
+  imgRange.addEventListener('input', () => { if (selImg) setPct(parseInt(imgRange.value, 10)); });
   imgbar.addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     if (b.id === 'imgDel'){ if (selImg){ const n = selImg; hideImgbar(); n.remove(); } return; }
-    const w = b.dataset.w; if (w && selImg){ selImg.style.width = w + '%'; imgRange.value = w; imgPct.textContent = w + '%'; }
+    const w = parseInt(b.dataset.w, 10); if (w && selImg) setPct(w);
   });
-  window.addEventListener('scroll', () => { if (selImg) positionImgbar(selImg); }, true);
+  window.addEventListener('scroll', () => { if (selImg){ positionImgbar(selImg); positionHandle(selImg); } }, true);
   // Ctrl/Cmd+S saves while editing
   document.addEventListener('keydown', e => {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's' && document.body.classList.contains('edit-on')){
