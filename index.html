@@ -1,11 +1,12 @@
 <!DOCTYPE html>
-<html lang="en"><head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>PMP Learning Notes</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
     /* ---- Minimalist earth palette ---- */
@@ -154,7 +155,7 @@
   }
 </style>
 </head>
-<body class="">
+<body>
 
 <header>
   <h1>PMP Learning Notes</h1>
@@ -168,7 +169,18 @@
     <button class="toc-toggle" id="tocToggle">Table of Contents ▾</button>
     <div class="toc-inner">
       <h2>Contents</h2>
-      <ul><li><a class="lvl-sec" href="#overview">Overview</a></li><li><a class="lvl-part" href="#part1">Part 1. The purpose of Standard for Project Management</a></li><li><a class="lvl-sec" href="#sec1">Section 1. Introduction</a></li><li><a class="lvl-sub" href="#s1-2">1.2 Key Terms and Concept</a></li><li><a class="lvl-sub" href="#s1-3">1.3 Elements of Project Management</a></li><li><a class="lvl-subsub" href="#s1-3-3">1.3.3 Operations and Project management</a></li><li><a class="lvl-subsub" href="#s1-3-4">1.3.4 Portfolio vs Program vs Project</a></li><li><a class="lvl-sec" href="#sec2">Section 2. A System for Value Delivery</a></li><li><a class="lvl-sub" href="#s2-1">2.1 Creating value</a></li><li><a class="lvl-sub" href="#s2-2">2.2 Project Environment</a></li><li><a class="lvl-sub" href="#new-sub-heading">2.3 Product management</a></li><li><a class="lvl-sub" href="#new-sub-heading-2">2.5 Project Management Roles</a></li><li><a class="lvl-sec" href="#new-section">Section 3. Project Management Principles</a></li><li><a class="lvl-sec" href="#new-section">Describe the mindset of Project Manager, which composed of 3 dimensions and how it relates to 6 principles</a></li></ul>
+      <ul>
+        <li><a class="lvl-sec" href="#overview">Overview</a></li>
+        <li><a class="lvl-part" href="#part1">Part 1. The purpose of Standard for Project Management</a></li>
+        <li><a class="lvl-sec" href="#sec1">Section 1. Introduction</a></li>
+        <li><a class="lvl-sub" href="#s1-2">1.2 Key Terms and Concept</a></li>
+        <li><a class="lvl-sub" href="#s1-3">1.3 Elements of Project Management</a></li>
+        <li><a class="lvl-subsub" href="#s1-3-3">1.3.3 Operations and Project management</a></li>
+        <li><a class="lvl-subsub" href="#s1-3-4">1.3.4 Portfolio vs Program vs Project</a></li>
+        <li><a class="lvl-sec" href="#sec2">Section 2. A System for Value Delivery</a></li>
+        <li><a class="lvl-sub" href="#s2-1">2.1 Creating value</a></li>
+        <li><a class="lvl-sub" href="#s2-2">2.2 Project Environment</a></li>
+      </ul>
     </div>
   </nav>
 
@@ -304,17 +316,17 @@
   <button data-act="done" title="Exit edit mode">Done</button>
 </div>
 <input type="file" id="imgInput" accept="image/*" style="display:none">
-<div id="imgbar" class="" style="left: 488px; top: 66px;">
+<div id="imgbar">
   <span>Size</span>
   <input type="range" id="imgRange" min="15" max="100" value="60">
-  <span id="imgPct">95%</span>
+  <span id="imgPct">60%</span>
   <button data-w="30">S</button>
   <button data-w="50">M</button>
   <button data-w="75">L</button>
   <button data-w="100">Full</button>
   <button class="danger" id="imgDel">Delete</button>
 </div>
-<div id="imgHandle" class="" style="left: 1201.890625px; top: 414.03125px;"></div>
+<div id="imgHandle"></div>
 
 <script>
 /* ============================================================
@@ -609,8 +621,8 @@
   let selImg = null, drag = null;
 
   function addImage(){ imgInput.value = ''; imgInput.click(); }
-  imgInput.addEventListener('change', () => {
-    const file = imgInput.files && imgInput.files[0]; if (!file) return;
+  function insertImageFile(file){
+    if (!file || !/^image\//i.test(file.type)) return;
     const reader = new FileReader();
     reader.onload = () => {
       const probe = new Image();
@@ -626,11 +638,35 @@
         const p = document.createElement('p'); p.className = 'doc'; p.innerHTML = '<br>';
         img.insertAdjacentElement('afterend', p);
         selectImg(img);
-        toast('Image added. Drag the slider (or S/M/L/Full) to resize, then Save.');
+        toast('Image added. Drag the green corner (or use the slider) to resize, then Save.');
       };
       probe.src = reader.result;
     };
     reader.readAsDataURL(file);
+  }
+  imgInput.addEventListener('change', () => insertImageFile(imgInput.files && imgInput.files[0]));
+
+  // Paste an image straight from the clipboard (e.g. a screenshot) while editing.
+  main.addEventListener('paste', e => {
+    if (!document.body.classList.contains('edit-on')) return;
+    const items = e.clipboardData && e.clipboardData.items; if (!items) return;
+    for (const it of items){
+      if (it.kind === 'file' && /^image\//i.test(it.type)){
+        e.preventDefault();
+        insertImageFile(it.getAsFile());
+        return;                                   // handled — don't also paste it as text
+      }
+    }
+  });
+  // Drag an image file onto the editor to drop it in.
+  main.addEventListener('dragover', e => {
+    if (document.body.classList.contains('edit-on') && e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files')) e.preventDefault();
+  });
+  main.addEventListener('drop', e => {
+    if (!document.body.classList.contains('edit-on')) return;
+    const files = e.dataTransfer && e.dataTransfer.files; if (!files || !files.length) return;
+    const img = Array.from(files).find(f => /^image\//i.test(f.type));
+    if (img){ e.preventDefault(); insertImageFile(img); }
   });
 
   function curPct(img){
@@ -718,6 +754,5 @@
   });
 })();
 </script>
-
-
-</body></html>
+</body>
+</html>
