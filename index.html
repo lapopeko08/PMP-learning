@@ -201,7 +201,7 @@
 
   /* ---------- Formatting toolbar ---------- */
   .fmtbar{ position:fixed; left:50%; transform:translateX(-50%); bottom:74px; z-index:41; display:none; gap:4px; align-items:center; background:var(--ink); padding:7px 9px; border-radius:10px; box-shadow:0 6px 20px rgba(26,26,26,.3); flex-wrap:wrap; max-width:94vw; justify-content:center; }
-  body.edit-on .fmtbar{ display:flex; }
+  .fmtbar.open{ display:flex; }
   .fmtbar button{ font-family:var(--font); font-size:13px; font-weight:600; color:var(--ink); background:#fff; border:none; border-radius:5px; padding:6px 9px; cursor:pointer; min-width:30px; line-height:1; }
   .fmtbar button:hover{ background:var(--sand); }
   .fmtbar .sep{ width:1px; height:20px; background:#4a4a4a; margin:0 2px; }
@@ -416,6 +416,7 @@
   <button data-act="image" title="Attach an image at the cursor">＋ Image</button>
   <button data-act="part" title="Add a new Part divider at the end">＋ Part</button>
   <button data-act="delete" title="Delete the block at the cursor">🗑 Delete</button>
+  <button data-act="format" title="Text formatting (bold, italic, color, lists…)">🎨 Format</button>
   <span class="sep"></span>
   <button class="primary" data-act="save" title="Save changes back to the file">💾 Save</button>
   <button data-act="done" title="Exit edit mode">Done</button>
@@ -544,7 +545,7 @@
   }
   function deleteTab(id){
     if (tabpages().length <= 1){ toast('Keep at least one tab.'); return; }
-    if (!window.confirm('Delete this tab and all its notes?')) return;
+    if (!window.confirm('Pretty sure to delete this? The whole tab and its notes will be removed.')) return;
     const tp=document.getElementById(id); const btn=tabsEl.querySelector('.tabbtn[data-page="'+id+'"]');
     const wasActive=tp.classList.contains('active'); tp.remove(); if(btn) btn.remove();
     if (wasActive) switchTab(tabpages()[0].id);
@@ -559,7 +560,7 @@
 
   // ---- edit mode ----
   function enterEdit(){ document.body.classList.add('edit-on'); main.setAttribute('contenteditable','true'); try{document.execCommand('defaultParagraphSeparator',false,'p');}catch(e){} main.focus(); toast('Edit mode on. Click text to change it; use the bar to add blocks or ＋ Tab. Double-click a tab to rename. Then Save.'); }
-  function exitEdit(){ document.body.classList.remove('edit-on'); main.removeAttribute('contenteditable'); hideImgbar(); rebuildToc(document); refreshObserver(); }
+  function exitEdit(){ document.body.classList.remove('edit-on'); main.removeAttribute('contenteditable'); hideImgbar(); var __fb=document.getElementById('fmtbar'); if(__fb) __fb.classList.remove('open'); rebuildToc(document); refreshObserver(); }
 
   function currentBlock(){
     const sel=window.getSelection();
@@ -640,11 +641,12 @@
   window.__save=save;
 
   $('#editToggle').addEventListener('click', enterEdit);
-  $('#editbar').addEventListener('click', e=>{ const btn=e.target.closest('button'); if(!btn)return; ({ section:addSection, sub:addSub, para:addParagraph, table:addTable, image:addImage, part:addPart, delete:deleteBlock, save:save, done:exitEdit }[btn.dataset.act]||(function(){}))(); });
+  $('#editbar').addEventListener('click', e=>{ const btn=e.target.closest('button'); if(!btn)return; ({ section:addSection, sub:addSub, para:addParagraph, table:addTable, image:addImage, part:addPart, delete:deleteBlock, format:toggleFmt, save:save, done:exitEdit }[btn.dataset.act]||(function(){}))(); });
   document.addEventListener('keydown', e=>{ if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='s'&&document.body.classList.contains('edit-on')){ e.preventDefault(); save(); } });
 
   // ---- rich-text formatting toolbar (works in whichever tab is active) ----
   const fmtbar=$('#fmtbar');
+  function toggleFmt(){ if(!fmtbar) return; const willOpen=!fmtbar.classList.contains('open'); fmtbar.classList.toggle('open', willOpen); if(willOpen){ const eb=document.getElementById('editbar'); fmtbar.style.bottom=(eb?(window.innerHeight-eb.getBoundingClientRect().top+8):78)+'px'; } }
   function listAtCursor(){ const s=window.getSelection(); if(!s||!s.rangeCount) return null; let n=s.anchorNode; if(n&&n.nodeType===3)n=n.parentElement; return (n&&n.closest)?n.closest('#main ul'):null; }
   if(fmtbar){
     fmtbar.addEventListener('mousedown', e=>e.preventDefault());
