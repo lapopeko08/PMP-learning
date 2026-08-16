@@ -164,7 +164,7 @@
   .tabbtn.active{ color:var(--ink); border-bottom-color:var(--olive); }
   .tabbtn .x{ display:none; margin-left:9px; color:#b23b3b; font-weight:700; }
   body.edit-on .tabbtn .x{ display:inline; }
-  .addtab{ display:none; margin-left:auto; font-family:var(--font); font-size:12px; font-weight:600; color:var(--olive); background:transparent; border:1px dashed var(--olive); border-radius:6px; padding:6px 12px; cursor:pointer; white-space:nowrap; }
+  .addtab{ display:inline-flex; margin-left:auto; font-family:var(--font); font-size:12px; font-weight:600; color:var(--olive); background:transparent; border:1px dashed var(--olive); border-radius:6px; padding:6px 12px; cursor:pointer; white-space:nowrap; }
   body.edit-on .addtab{ display:inline-flex; }
   #main .tabpage{ display:none; }
   #main .tabpage.active{ display:block; }
@@ -442,6 +442,7 @@
     const tp=document.createElement('div'); tp.className='tabpage'; tp.id=id; tp.dataset.name=name;
     tp.innerHTML = '<section><div class="doc-block"><h3 class="sec">'+escapeHtml(name)+'</h3><p class="doc">Write here…</p></div></section>';
     main.appendChild(tp); tabsEl.appendChild(makeTabBtn(id, name)); switchTab(id);
+    if(!document.body.classList.contains('edit-on')) enterEdit();
     const hd=$('.sec', tp); if(hd) selectText(hd);
     toast('New tab added. Type your notes, then Save.');
   }
