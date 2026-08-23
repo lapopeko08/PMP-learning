@@ -656,6 +656,7 @@
     fmtbar.addEventListener('mousedown', function(e){ e.preventDefault(); });
     document.addEventListener('mousedown', function(e){ if(e.target.closest('.fmtgrp')) e.preventDefault(); });
     document.addEventListener('click', function(e){ var g=e.target.closest('.fmtgrp'); if(g) setGroup(g.dataset.group); });
+    document.addEventListener('pointerdown', function(e){ if(!document.body.classList.contains('edit-on')) return; if(e.target.closest('.editbar')||e.target.closest('.fmtbar')) return; if(activeGroup) setGroup(activeGroup); });
     fmtbar.addEventListener('click', function(e){
       const grp=e.target.closest('.fmtgrp'); if(grp){ setGroup(grp.dataset.group); return; }
       const b=e.target.closest('button'); if(!b) return; const d=b.dataset;
