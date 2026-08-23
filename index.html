@@ -197,7 +197,7 @@
 
   /* ---------- Formatting toolbar ---------- */
   .fmtbar{ display:none; flex-direction:column; background:var(--ink); padding:8px 30px 10px; border-top:1px solid #3a3a3a; }
-  .fmtbar.open{ display:flex; }
+  body.edit-on .fmtbar.open{ display:flex; }
   .fmtbar .fmtpanel button{ font-family:var(--font); font-size:13px; font-weight:600; color:var(--ink); background:#fff; border:none; border-radius:5px; padding:6px 10px; cursor:pointer; min-width:30px; line-height:1; }
   .fmtbar button:hover{ background:var(--sand); }
   .fmtbar .sep{ width:1px; height:20px; background:#4a4a4a; margin:0 2px; }
@@ -232,13 +232,13 @@
 </header>
 <div class="tabbar"><div class="tabs" id="tabs"><button class="tabbtn" data-page="tp1"><span class="tname">PMP Notes</span><span class="x" title="Delete tab">✕</span></button><button class="tabbtn" data-page="tp2"><span class="tname">Investment</span><span class="x" title="Delete tab">✕</span></button><button class="tabbtn" data-page="tp3"><span class="tname">Vocab</span><span class="x" title="Delete tab">✕</span></button><button class="tabbtn active" data-page="tp4"><span class="tname">Random thoughts</span><span class="x" title="Delete tab">✕</span></button></div><button class="addtab" id="addTab" title="Add a tab">＋ Tab</button></div>
 <div class="searchbar"><div class="note-search-wrap"><input type="text" id="noteSearch" class="note-search" placeholder="🔍 Search this tab…"><button type="button" id="noteSearchClear" class="note-clear" title="Clear search">✕</button></div><span class="note-count" id="noteSearchCount"></span></div>
-<div class="editbar" id="editbar"><button class="fmtgrp" data-group="font" title="Font style">Aa Font</button><button class="fmtgrp active" data-group="para" title="Paragraph formatting">¶ Paragraph</button><button class="fmtgrp" data-group="struct" title="Structure / hierarchy">⌗ Structure</button><button class="fmtgrp" data-group="image" title="Image">🖼 Image</button><button class="fmtgrp" data-group="table" title="Table">▦ Table</button><span class="sep"></span>
+<div class="editbar" id="editbar"><button class="fmtgrp" data-group="font" title="Font style">Aa Font</button><button class="fmtgrp" data-group="para" title="Paragraph formatting">¶ Paragraph</button><button class="fmtgrp" data-group="struct" title="Structure / hierarchy">⌗ Structure</button><button class="fmtgrp" data-group="image" title="Image">🖼 Image</button><button class="fmtgrp" data-group="table" title="Table">▦ Table</button><span class="sep"></span>
   <button data-act="delete" title="Delete the block at the cursor">🗑 Delete</button>
   <span class="sep"></span>
   <button class="primary" data-act="save" title="Save changes back to the file">💾 Save</button>
   <button data-act="done" title="Exit edit mode">Done</button>
 </div>
-<div class="fmtbar open" id="fmtbar"><div class="fmtpanel" id="fmtpanel" style="display: flex;"><button type="button" data-cmd="insertUnorderedList" title="Bullet list">• List</button><button type="button" data-cmd="insertOrderedList" title="Numbered list">1. List</button><button type="button" data-liststyle="disc" title="Disc bullets">•</button><button type="button" data-liststyle="circle" title="Circle bullets">◦</button><button type="button" data-liststyle="square" title="Square bullets">▪</button><span class="fsep"></span><button type="button" data-cmd="outdent" title="Outdent">⇤</button><button type="button" data-cmd="indent" title="Indent">⇥</button><span class="fsep"></span><button type="button" data-cmd="justifyLeft" title="Align left">↤</button><button type="button" data-cmd="justifyCenter" title="Center">↔</button><button type="button" data-cmd="justifyRight" title="Align right">↦</button><button type="button" data-cmd="justifyFull" title="Justify">≣</button></div></div>
+<div class="fmtbar" id="fmtbar"><div class="fmtpanel" id="fmtpanel" style="display:none"></div></div>
 </div>
 
 <div class="layout">
@@ -601,6 +601,7 @@
     clone.querySelectorAll('.note-img.sel').forEach(el=>el.classList.remove('sel'));
     const ib=clone.querySelector('#imgbar'); if(ib) ib.classList.remove('show');
     const ih=clone.querySelector('#imgHandle'); if(ih) ih.classList.remove('show');
+    var fb2=clone.querySelector('#fmtbar'); if(fb2) fb2.classList.remove('open'); var fp2=clone.querySelector('#fmtpanel'); if(fp2){ fp2.innerHTML=''; fp2.style.display='none'; } clone.querySelectorAll('.fmtgrp.active').forEach(function(el){el.classList.remove('active');});
     rebuildToc(clone);
     return '<!DOCTYPE html>\n' + clone.outerHTML + '\n';
   }
