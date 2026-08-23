@@ -216,10 +216,12 @@
   .fmtgroups{ display:flex; gap:6px; flex-wrap:wrap; }
   .fmtgrp{ font-family:var(--font); font-size:12.5px; font-weight:600; color:var(--bg); background:#333; border:1px solid #4a4a4a; border-radius:6px; padding:6px 12px; cursor:pointer; }
   .fmtgrp.active{ background:#fff; color:var(--ink); border-color:#fff; }
-  .fmtpanel{ display:flex; gap:4px; flex-wrap:wrap; align-items:center; margin-top:8px; padding-top:8px; border-top:1px solid #3a3a3a; }
+  .fmtpanel{ display:flex; gap:4px; flex-wrap:wrap; align-items:center; }
   .fmtpanel .fsep{ width:1px; height:20px; background:#4a4a4a; margin:0 4px; }
   .fmtpanel button.wide{ font-size:12px; padding:6px 11px; }
   @media (max-width:820px){ .editbar,.fmtbar{ padding-left:14px; padding-right:14px; } }
+  .editbar .fmtgrp{ background:#333; color:var(--bg); border:1px solid #4a4a4a; }
+  .editbar .fmtgrp.active{ background:#fff; color:var(--ink); border-color:#fff; }
 </style>
 </head>
 <body class="">
@@ -230,20 +232,13 @@
 </header>
 <div class="tabbar"><div class="tabs" id="tabs"><button class="tabbtn" data-page="tp1"><span class="tname">PMP Notes</span><span class="x" title="Delete tab">✕</span></button><button class="tabbtn" data-page="tp2"><span class="tname">Investment</span><span class="x" title="Delete tab">✕</span></button><button class="tabbtn" data-page="tp3"><span class="tname">Vocab</span><span class="x" title="Delete tab">✕</span></button><button class="tabbtn active" data-page="tp4"><span class="tname">Random thoughts</span><span class="x" title="Delete tab">✕</span></button></div><button class="addtab" id="addTab" title="Add a tab">＋ Tab</button></div>
 <div class="searchbar"><div class="note-search-wrap"><input type="text" id="noteSearch" class="note-search" placeholder="🔍 Search this tab…"><button type="button" id="noteSearchClear" class="note-clear" title="Clear search">✕</button></div><span class="note-count" id="noteSearchCount"></span></div>
-<div class="editbar" id="editbar">
-  <button data-act="section" title="Add a new top-level section at the end">＋ Section</button>
-  <button data-act="sub" title="Insert a sub-heading at the cursor">＋ Sub-heading</button>
-  <button data-act="para" title="Insert a paragraph at the cursor">＋ Paragraph</button>
-  <button data-act="table" title="Insert a table at the cursor">＋ Table</button>
-  <button data-act="image" title="Attach an image at the cursor">＋ Image</button>
-  <button data-act="part" title="Add a new Part divider at the end">＋ Part</button>
+<div class="editbar" id="editbar"><button class="fmtgrp" data-group="font" title="Font style">Aa Font</button><button class="fmtgrp active" data-group="para" title="Paragraph formatting">¶ Paragraph</button><button class="fmtgrp" data-group="struct" title="Structure / hierarchy">⌗ Structure</button><button class="fmtgrp" data-group="image" title="Image">🖼 Image</button><button class="fmtgrp" data-group="table" title="Table">▦ Table</button><span class="sep"></span>
   <button data-act="delete" title="Delete the block at the cursor">🗑 Delete</button>
-  <button data-act="format" title="Text formatting (bold, italic, color, lists…)">🎨 Format</button>
   <span class="sep"></span>
   <button class="primary" data-act="save" title="Save changes back to the file">💾 Save</button>
   <button data-act="done" title="Exit edit mode">Done</button>
 </div>
-<div class="fmtbar open" id="fmtbar"><div class="fmtgroups"><button class="fmtgrp" data-group="font" title="Font style">Aa Font</button><button class="fmtgrp active" data-group="para" title="Paragraph formatting">¶ Paragraph</button><button class="fmtgrp" data-group="struct" title="Structure / hierarchy">⌗ Structure</button><button class="fmtgrp" data-group="image" title="Image">🖼 Image</button><button class="fmtgrp" data-group="table" title="Table">▦ Table</button></div><div class="fmtpanel" id="fmtpanel" style="display: flex;"><button type="button" data-cmd="insertUnorderedList" title="Bullet list">• List</button><button type="button" data-cmd="insertOrderedList" title="Numbered list">1. List</button><button type="button" data-liststyle="disc" title="Disc bullets">•</button><button type="button" data-liststyle="circle" title="Circle bullets">◦</button><button type="button" data-liststyle="square" title="Square bullets">▪</button><span class="fsep"></span><button type="button" data-cmd="outdent" title="Outdent">⇤</button><button type="button" data-cmd="indent" title="Indent">⇥</button><span class="fsep"></span><button type="button" data-cmd="justifyLeft" title="Align left">↤</button><button type="button" data-cmd="justifyCenter" title="Center">↔</button><button type="button" data-cmd="justifyRight" title="Align right">↦</button><button type="button" data-cmd="justifyFull" title="Justify">≣</button></div></div>
+<div class="fmtbar open" id="fmtbar"><div class="fmtpanel" id="fmtpanel" style="display: flex;"><button type="button" data-cmd="insertUnorderedList" title="Bullet list">• List</button><button type="button" data-cmd="insertOrderedList" title="Numbered list">1. List</button><button type="button" data-liststyle="disc" title="Disc bullets">•</button><button type="button" data-liststyle="circle" title="Circle bullets">◦</button><button type="button" data-liststyle="square" title="Square bullets">▪</button><span class="fsep"></span><button type="button" data-cmd="outdent" title="Outdent">⇤</button><button type="button" data-cmd="indent" title="Indent">⇥</button><span class="fsep"></span><button type="button" data-cmd="justifyLeft" title="Align left">↤</button><button type="button" data-cmd="justifyCenter" title="Center">↔</button><button type="button" data-cmd="justifyRight" title="Align right">↦</button><button type="button" data-cmd="justifyFull" title="Justify">≣</button></div></div>
 </div>
 
 <div class="layout">
@@ -645,7 +640,7 @@
     };
     let activeGroup=null;
     function renderPanel(g){ const arr=GROUPS[g]||[]; panel.innerHTML=arr.map(function(o){ if(o.sep) return '<span class="fsep"></span>'; var a='',cls=''; if(o.cmd)a='data-cmd="'+o.cmd+'"'; else if(o.block){a='data-block="'+o.block+'"';cls=' class="wide"';} else if(o.act){a='data-act="'+o.act+'"';cls=' class="wide"';} else if(o.tbl){a='data-tbl="'+o.tbl+'"';cls=' class="wide"';} else if(o.imgsize)a='data-imgsize="'+o.imgsize+'"'; else if(o.imgalign)a='data-imgalign="'+o.imgalign+'"'; else if(o.imgdel)a='data-imgdel="1"'; else if(o.color)a='data-color="'+o.color+'" style="color:'+o.color+'"'; else if(o.hilite)a='data-hilite="'+o.hilite+'"'+(o.hilite!=='transparent'?' style="background:'+o.hilite+'"':''); else if(o.liststyle)a='data-liststyle="'+o.liststyle+'"'; else if(o.size)a='data-size="'+o.size+'"'; return '<button type="button"'+cls+' '+a+' title="'+o.t+'">'+o.label+'</button>'; }).join(''); panel.style.display=arr.length?'flex':'none'; }
-    function setGroup(g){ if(activeGroup===g){ activeGroup=null; panel.style.display='none'; fmtbar.querySelectorAll('.fmtgrp').forEach(function(x){x.classList.remove('active');}); return; } activeGroup=g; fmtbar.querySelectorAll('.fmtgrp').forEach(function(x){ x.classList.toggle('active', x.dataset.group===g); }); renderPanel(g); }
+    function setGroup(g){ var groups=document.querySelectorAll('.fmtgrp'); if(activeGroup===g){ activeGroup=null; panel.style.display='none'; fmtbar.classList.remove('open'); groups.forEach(function(x){x.classList.remove('active');}); return; } activeGroup=g; groups.forEach(function(x){ x.classList.toggle('active', x.dataset.group===g); }); renderPanel(g); fmtbar.classList.add('open'); }
     function setBlock(type){ const sel=window.getSelection(); if(!sel||!sel.rangeCount) return; let n=sel.anchorNode; if(n&&n.nodeType===3)n=n.parentElement; const block=(n&&n.closest)?n.closest('#main h2,#main h3,#main h4,#main h5,#main p,#main li'):null; if(!block) return; const map={part:['h2','part'],sec:['h3','sec'],h1:['h4','sub'],h2:['h5','subsub'],body:['p','doc']}; const cfg=map[type]; if(!cfg) return; const el=document.createElement(cfg[0]); el.className=cfg[1]; while(block.firstChild) el.appendChild(block.firstChild); if(!el.textContent.trim()&&!el.querySelector('img')) el.innerHTML='<br>'; block.replaceWith(el); const r=document.createRange(); r.selectNodeContents(el); r.collapse(false); sel.removeAllRanges(); sel.addRange(r); rebuildToc(document); refreshObserver(); }
     function curCell(){ const s=window.getSelection(); if(!s||!s.rangeCount) return null; let n=s.anchorNode; if(n&&n.nodeType===3)n=n.parentElement; return (n&&n.closest)?n.closest('#main td, #main th'):null; }
     function tblOp(op){ const cell=curCell(); if(!cell){ toast('Put the cursor in a table cell first.'); return; } const tr=cell.parentElement, t=cell.closest('table'), idx=cell.cellIndex, rows=function(){return Array.from(t.rows);};
@@ -659,6 +654,8 @@
       else if(op==='colwider'||op==='colnarrow'){ const w=cell.getBoundingClientRect().width; const nw=Math.max(40, Math.round(w+(op==='colwider'?40:-40))); rows().forEach(function(r){ if(r.cells[idx]) r.cells[idx].style.width=nw+'px'; }); }
     }
     fmtbar.addEventListener('mousedown', function(e){ e.preventDefault(); });
+    document.addEventListener('mousedown', function(e){ if(e.target.closest('.fmtgrp')) e.preventDefault(); });
+    document.addEventListener('click', function(e){ var g=e.target.closest('.fmtgrp'); if(g) setGroup(g.dataset.group); });
     fmtbar.addEventListener('click', function(e){
       const grp=e.target.closest('.fmtgrp'); if(grp){ setGroup(grp.dataset.group); return; }
       const b=e.target.closest('button'); if(!b) return; const d=b.dataset;
