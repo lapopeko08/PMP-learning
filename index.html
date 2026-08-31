@@ -227,6 +227,7 @@
   .todo-text{ flex:1; }
   .todo.done .todo-text{ text-decoration:line-through; color:#9a958c; }
   body.edit-on [data-ph]:empty::before{ content:attr(data-ph); color:#b3ad9f; pointer-events:none; }
+  .autostatus{ font-family:var(--font); font-size:11.5px; color:#cfc9bb; align-self:center; margin-left:6px; white-space:nowrap; }
 </style>
 </head>
 <body class="">
@@ -243,6 +244,7 @@
   <span class="sep"></span>
   <button class="primary" data-act="save" title="Save changes back to the file">💾 Save</button>
   <button data-act="done" title="Exit edit mode">Done</button>
+  <span class="autostatus" id="autoStatus"></span>
 </div>
 <div class="fmtbar" id="fmtbar"><div class="fmtpanel" id="fmtpanel" style="display: none;"></div></div>
 </div>
@@ -546,8 +548,8 @@
   $('#addTab').addEventListener('click', addTab);
 
   // ---- edit mode ----
-  function enterEdit(){ document.body.classList.add('edit-on'); main.setAttribute('contenteditable','true'); try{document.execCommand('defaultParagraphSeparator',false,'p');}catch(e){} main.focus(); toast('Edit mode on. Click text to change it; use the bar to add blocks or ＋ Tab. Double-click a tab to rename. Then Save.'); }
-  function exitEdit(){ document.body.classList.remove('edit-on'); main.removeAttribute('contenteditable'); hideImgbar(); var __fb=document.getElementById('fmtbar'); if(__fb) __fb.classList.remove('open'); rebuildToc(document); refreshObserver(); }
+  function enterEdit(){ document.body.classList.add('edit-on'); main.setAttribute('contenteditable','true'); setAutoStatus('Auto-save on'); try{document.execCommand('defaultParagraphSeparator',false,'p');}catch(e){} main.focus(); toast('Edit mode on. Click text to change it; use the bar to add blocks or ＋ Tab. Double-click a tab to rename. Then Save.'); }
+  function exitEdit(){ if(autoTimer){clearTimeout(autoTimer);autoTimer=null;} autoSave(); document.body.classList.remove('edit-on'); main.removeAttribute('contenteditable'); hideImgbar(); var __fb=document.getElementById('fmtbar'); if(__fb) __fb.classList.remove('open'); rebuildToc(document); refreshObserver(); }
 
   function currentBlock(){
     const sel=window.getSelection();
@@ -612,6 +614,7 @@
     const ib=clone.querySelector('#imgbar'); if(ib) ib.classList.remove('show');
     const ih=clone.querySelector('#imgHandle'); if(ih) ih.classList.remove('show');
     var fb2=clone.querySelector('#fmtbar'); if(fb2) fb2.classList.remove('open'); var fp2=clone.querySelector('#fmtpanel'); if(fp2){ fp2.innerHTML=''; fp2.style.display='none'; } clone.querySelectorAll('.fmtgrp.active').forEach(function(el){el.classList.remove('active');});
+    clone.querySelectorAll('#main .doc-block > p, #main li, #main tbody tr').forEach(function(el){ if(el.style.display==='none') el.style.removeProperty('display'); });
     rebuildToc(clone);
     return '<!DOCTYPE html>\n' + clone.outerHTML + '\n';
   }
@@ -635,6 +638,7 @@
   $('#editToggle').addEventListener('click', enterEdit);
   $('#editbar').addEventListener('click', e=>{ const btn=e.target.closest('button'); if(!btn)return; ({ section:addSection, sub:addSub, para:addParagraph, table:addTable, image:addImage, part:addPart, delete:deleteBlock, undo:doUndo, format:toggleFmt, save:save, done:exitEdit }[btn.dataset.act]||(function(){}))(); });
   document.addEventListener('keydown', e=>{ if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='s'&&document.body.classList.contains('edit-on')){ e.preventDefault(); save(); } });
+  document.addEventListener('keydown', function(e){ if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='z'&&!e.shiftKey&&document.body.classList.contains('edit-on')){ if(undoStack.length){ e.preventDefault(); doUndo(); } } });
 
   // ---- rich-text formatting toolbar (works in whichever tab is active) ----
   const fmtbar=$('#fmtbar');
@@ -690,6 +694,29 @@
       else if(d.liststyle){ let ul=listAtCursor(); if(!ul){ document.execCommand('insertUnorderedList',false,null); ul=listAtCursor(); } if(ul) ul.style.listStyleType=d.liststyle; }
     });
   }
+
+  // ---- auto-save (commits to GitHub a few seconds after you stop editing) ----
+  var autoTimer=null, autoSaving=false, autoPending=false;
+  function setAutoStatus(t){ var el=document.getElementById('autoStatus'); if(el) el.textContent=t; }
+  function scheduleAutoSave(delay){ if(autoTimer) clearTimeout(autoTimer); autoTimer=setTimeout(autoSave, (delay===undefined?6000:delay)); }
+  async function autoSave(){
+    if(!document.body.classList.contains('edit-on')) return;
+    if(location.protocol!=='http:'&&location.protocol!=='https:') return;
+    var token=localStorage.getItem('gh-token'); if(!token){ setAutoStatus('Auto-save needs sign-in'); return; }
+    if(autoSaving){ autoPending=true; return; }
+    autoSaving=true; setAutoStatus('Saving…');
+    try{
+      var html=buildSaveHtml();
+      var headers={Authorization:'Bearer '+token,Accept:'application/vnd.github+json'};
+      var sha; try{ sha=await ghSha(headers); }catch(e){ if(e&&e.code===401){ setAutoStatus('Sign-in needed'); autoSaving=false; return; } throw e; }
+      var put=await ghPut(headers,html,sha);
+      if(put.status===409){ sha=await ghSha(headers); put=await ghPut(headers,html,sha); }
+      if(put.ok) setAutoStatus('Saved \u2713'); else if(put.status===401){ setAutoStatus('Sign-in needed'); } else setAutoStatus('Save failed ('+put.status+')');
+    }catch(e){ setAutoStatus('Offline \u2014 retrying'); scheduleAutoSave(15000); }
+    autoSaving=false;
+    if(autoPending){ autoPending=false; scheduleAutoSave(800); }
+  }
+  if(main){ new MutationObserver(function(){ if(document.body.classList.contains('edit-on')) scheduleAutoSave(); }).observe(main,{subtree:true,childList:true,characterData:true,attributes:true}); }
 
   // initial build
   rebuildToc(document); refreshObserver();
@@ -776,7 +803,7 @@
   input.addEventListener('input', apply);
   if(clearBtn) clearBtn.addEventListener('click', function(){ input.value=''; apply(); input.focus(); });
   window.__onTabSwitch=apply;
-  const prev=window.__beforeSave; window.__beforeSave=function(){ resetAll(); if(typeof prev==='function') prev(); };
+  const prev=window.__beforeSave; window.__beforeSave=function(){ if(typeof prev==='function') prev(); };
 })();
 </script>
 
