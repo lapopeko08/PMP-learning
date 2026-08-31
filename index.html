@@ -654,7 +654,7 @@
     main.addEventListener('change', function(e){ const cb=e.target.closest('.todo-box'); if(cb){ const p=cb.closest('.todo'); if(p) p.classList.toggle('done', cb.checked); } });
     function curCell(){ const s=window.getSelection(); if(!s||!s.rangeCount) return null; let n=s.anchorNode; if(n&&n.nodeType===3)n=n.parentElement; return (n&&n.closest)?n.closest('#main td, #main th'):null; }
     function tblOp(op){ const cell=curCell(); if(!cell){ toast('Put the cursor in a table cell first.'); return; } const tr=cell.parentElement, t=cell.closest('table'), idx=cell.cellIndex, rows=function(){return Array.from(t.rows);};
-      if(op==='addrow'){ const ntr=t.insertRow(tr.rowIndex+1); for(var i=0;i<tr.cells.length;i++){ ntr.insertCell(-1).setAttribute('data-ph','Text'); } }
+      if(op==='addrow'){ var cols=0; Array.from(t.rows).forEach(function(rr){ var cc=0; Array.from(rr.cells).forEach(function(cl){ cc+=(cl.colSpan||1); }); if(cc>cols)cols=cc; }); if(!cols)cols=tr.cells.length; const ntr=t.insertRow(tr.rowIndex+1); for(var i=0;i<cols;i++){ ntr.insertCell(-1).setAttribute('data-ph','Text'); } }
       else if(op==='delrow'){ if(t.rows.length>1) tr.parentNode.removeChild(tr); }
       else if(op==='addcol'){ rows().forEach(function(r){ const ref=r.cells[idx]; const isH=ref&&ref.tagName==='TH'; const c=document.createElement(isH?'th':'td'); c.setAttribute('data-ph',isH?'Heading':'Text'); if(ref) ref.insertAdjacentElement('afterend',c); else r.appendChild(c); }); }
       else if(op==='delcol'){ rows().forEach(function(r){ if(r.cells[idx]) r.deleteCell(idx); }); }
