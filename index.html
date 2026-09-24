@@ -3,6 +3,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Notes</title>
+<meta name="note-rev" content="muf806xv-7ox0h7">
 <link rel="icon" href="favicon.ico?v=4" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=3">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=3">
@@ -227,6 +228,17 @@
   .todo-text{ flex:1; }
   .todo.done .todo-text{ text-decoration:line-through; color:#9a958c; }
   body.edit-on [data-ph]:empty::before{ content:attr(data-ph); color:#b3ad9f; pointer-events:none; }
+  /* Body text was styled only as a DIRECT child of .doc-block, so the Body button
+     produced an unstyled paragraph anywhere deeper (tables, lists, nested blocks). */
+  p.doc{ margin:10px 0; font-size:15px; line-height:1.7; color:#2b2b2b; }
+  td p.doc, th p.doc{ margin:4px 0; }
+  ul > p.doc, ol > p.doc{ margin-left:0; list-style:none; }
+  .autostatus{ font-family:var(--font); font-size:11.5px; color:#cfc9bb; align-self:center; margin-left:6px; white-space:nowrap; }
+  li.todo-li{ list-style:none; display:flex; align-items:flex-start; gap:8px; margin-left:-1.2em; }
+  li.todo-li.done > .todo-text{ text-decoration:line-through; color:#9a958c; }
+  .stalebar{ position:fixed; left:0; right:0; top:0; z-index:9999; background:#8a3b3b; color:#fff; font-family:var(--font);
+    font-size:13px; padding:10px 14px; display:flex; gap:12px; align-items:center; justify-content:center; }
+  .stalebar button{ font-family:var(--font); font-size:12px; font-weight:600; border:none; border-radius:6px; padding:6px 12px; cursor:pointer; }
 </style>
 </head>
 <body class="">
@@ -243,6 +255,7 @@
   <span class="sep"></span>
   <button class="primary" data-act="save" title="Save changes back to the file">💾 Save</button>
   <button data-act="done" title="Exit edit mode">Done</button>
+  <span class="autostatus" id="autoStatus">Saving…</span>
 </div>
 <div class="fmtbar" id="fmtbar"><div class="fmtpanel" id="fmtpanel" style="display: none;"></div></div>
 </div>
@@ -547,7 +560,7 @@
 
   // ---- edit mode ----
   function enterEdit(){ document.body.classList.add('edit-on'); main.setAttribute('contenteditable','true'); try{document.execCommand('defaultParagraphSeparator',false,'p');}catch(e){} main.focus(); toast('Edit mode on. Click text to change it; use the bar to add blocks or ＋ Tab. Double-click a tab to rename. Then Save.'); }
-  function exitEdit(){ document.body.classList.remove('edit-on'); main.removeAttribute('contenteditable'); hideImgbar(); var __fb=document.getElementById('fmtbar'); if(__fb) __fb.classList.remove('open'); rebuildToc(document); refreshObserver(); }
+  function exitEdit(){ try{ scheduleAutoSave(150); }catch(e){} document.body.classList.remove('edit-on'); main.removeAttribute('contenteditable'); hideImgbar(); var __fb=document.getElementById('fmtbar'); if(__fb) __fb.classList.remove('open'); rebuildToc(document); refreshObserver(); }
 
   function currentBlock(){
     const sel=window.getSelection();
@@ -603,6 +616,10 @@
     if(window.__beforeSave) try{ window.__beforeSave(); }catch(e){}
     document.querySelectorAll('.todo-box').forEach(function(cb){ if(cb.checked) cb.setAttribute('checked',''); else cb.removeAttribute('checked'); });
     const clone=document.documentElement.cloneNode(true);
+    PENDING_REV=newRev();
+    { let mm=clone.querySelector('meta[name="note-rev"]');
+      if(!mm){ mm=document.createElement('meta'); mm.setAttribute('name','note-rev'); const hd=clone.querySelector('head'); if(hd) hd.insertBefore(mm, hd.firstChild); }
+      mm.setAttribute('content', PENDING_REV); }
     clone.querySelectorAll('[contenteditable="true"]').forEach(el=>el.removeAttribute('contenteditable'));
     clone.querySelectorAll('nav.toc a.active').forEach(el=>el.classList.remove('active'));
     const body=clone.querySelector('body'); if(body) body.classList.remove('edit-on');
@@ -628,9 +645,150 @@
   function clearToken(){ localStorage.removeItem('gh-token'); }
   async function ghSha(headers){ const url='https://api.github.com/repos/'+GH.owner+'/'+GH.repo+'/contents/'+GH.path+'?ref='+GH.branch+'&_='+Date.now(); const g=await fetch(url,{headers,cache:'no-store'}); if(g.ok)return (await g.json()).sha; if(g.status===401){ clearToken(); throw {code:401}; } return null; }
   function ghPut(headers,html,sha){ return fetch('https://api.github.com/repos/'+GH.owner+'/'+GH.repo+'/contents/'+GH.path,{ method:'PUT', cache:'no-store', headers:Object.assign({},headers,{'Content-Type':'application/json'}), body:JSON.stringify(Object.assign({message:'Update PMP notes', content:b64(html), branch:GH.branch}, sha?{sha:sha}:{})) }); }
-  async function saveToGitHub(html){ const token=getToken(); if(!token){ toast('Save cancelled — no token entered.'); return; } const headers={Authorization:'Bearer '+token,Accept:'application/vnd.github+json'}; try{ toast('Saving to GitHub…'); let sha; try{ sha=await ghSha(headers);}catch(e){ if(e&&e.code===401){ toast('Token rejected. Tap Save again to re-enter it.'); return; } throw e; } let put=await ghPut(headers,html,sha); if(put.status===409){ sha=await ghSha(headers); put=await ghPut(headers,html,sha);} if(put.ok) toast('Saved to GitHub ✓ The page refreshes everywhere in ~1 min.'); else if(put.status===401){ clearToken(); toast('Token rejected. Tap Save again to re-enter it.'); } else { console.error(await put.text()); toast('GitHub save failed ('+put.status+'). See console.'); } }catch(e){ console.error(e); toast('Network error while saving to GitHub.'); } }
+  async function saveToGitHub(html, quiet){
+    const token=getToken();
+    if(!token){ if(!quiet) toast('Save cancelled — no token entered.'); return false; }
+    const headers={Authorization:'Bearer '+token,Accept:'application/vnd.github+json'};
+    try{
+      if(!quiet) toast('Saving to GitHub…');
+      if(!(await isCurrent())){ showStaleBar(); return false; }
+      let sha;
+      try{ sha=await ghSha(headers); }
+      catch(e){ if(e&&e.code===401){ if(!quiet) toast('Token rejected. Tap Save again to re-enter it.'); return false; } throw e; }
+      const put=await ghPut(headers,html,sha);
+      if(put.status===409){ showStaleBar(); return false; }
+      if(put.ok){ MY_REVS.add(myRev()); MY_REVS.add(PENDING_REV); setMyRev(PENDING_REV); if(!quiet) toast('Saved to GitHub ✓ The page refreshes everywhere in ~1 min.'); return true; }
+      if(put.status===401){ clearToken(); if(!quiet) toast('Token rejected. Tap Save again to re-enter it.'); return false; }
+      console.error(await put.text()); if(!quiet) toast('GitHub save failed ('+put.status+'). See console.'); return false;
+    }catch(e){ console.error(e); if(!quiet) toast('Network error while saving to GitHub.'); throw e; }
+  }
   async function save(){ const html=buildSaveHtml(); if(location.protocol==='http:'||location.protocol==='https:') await saveToGitHub(html); else await saveLocal(html); }
   window.__save=save;
+
+  /* ============ added 2026-09-22 ============
+     - freshness guard: a page loaded from a stale cache can no longer overwrite newer notes
+     - auto-save, ported from the local iCloud copy, now conflict-safe
+     - to-do fixes: Enter makes a real new item instead of an empty flex row
+     ========================================== */
+  const RAW='https://raw.githubusercontent.com/'+GH.owner+'/'+GH.repo+'/'+GH.branch+'/'+GH.path;
+  let PENDING_REV='';
+  // every revision THIS page has published, plus the one it loaded with. raw.githubusercontent
+  // is CDN-cached for a few minutes, so a just-saved page will keep seeing its own older
+  // revision come back — that is not a conflict, so it must not block saving.
+  const MY_REVS=new Set();
+  function newRev(){ return Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8); }
+  function myRev(){ const m=document.querySelector('meta[name="note-rev"]'); return m?m.getAttribute('content'):''; }
+  function setMyRev(v){ let m=document.querySelector('meta[name="note-rev"]');
+    if(!m){ m=document.createElement('meta'); m.setAttribute('name','note-rev'); document.head.insertBefore(m,document.head.firstChild); }
+    m.setAttribute('content',v); }
+  async function remoteRev(){
+    try{ const r=await fetch(RAW+'?_='+Date.now(),{cache:'no-store'}); if(!r.ok) return null;
+         const m=/<meta name="note-rev" content="([^"]*)"/.exec(await r.text());
+         return m?m[1]:null; }   // no stamp at all = an older copy or CDN lag, not a conflict
+    catch(e){ return null; }
+  }
+  async function isCurrent(){ const rr=await remoteRev(); if(rr===null) return true; return rr===myRev()||MY_REVS.has(rr); }
+
+  function showStaleBar(){
+    if(document.getElementById('stalebar')) return;
+    const bar=document.createElement('div'); bar.className='stalebar'; bar.id='stalebar';
+    bar.innerHTML='<span>This page is out of date — a newer version was saved elsewhere. Reload before editing, or your changes will overwrite it.</span>';
+    const b=document.createElement('button'); b.textContent='Reload now';
+    b.onclick=function(){ location.replace(location.pathname+'?v='+Date.now()); };
+    bar.appendChild(b); document.body.appendChild(bar);
+    setAutoStatus('Not saved — page out of date');
+  }
+  async function freshenOnLoad(){
+    if(location.protocol!=='http:'&&location.protocol!=='https:') return;
+    const rr=await remoteRev();
+    if(rr===null||rr===myRev()||MY_REVS.has(rr)) return;
+    if(sessionStorage.getItem('note-reloaded')===rr){ showStaleBar(); return; }
+    sessionStorage.setItem('note-reloaded',rr);
+    location.replace(location.pathname+'?v='+encodeURIComponent(rr));
+  }
+
+  /* ---- auto-save ---- */
+  var autoTimer=null, autoSaving=false, autoPending=false;
+  function setAutoStatus(t){ const el=document.getElementById('autoStatus'); if(el) el.textContent=t; }
+  function scheduleAutoSave(delay){ if(autoTimer) clearTimeout(autoTimer); autoTimer=setTimeout(runAutoSave,(delay===undefined?6000:delay)); }
+  function saveSoon(){ scheduleAutoSave(1500); }
+  async function runAutoSave(){
+    if(location.protocol!=='http:'&&location.protocol!=='https:') return;
+    if(document.getElementById('stalebar')) return;
+    if(!localStorage.getItem('gh-token')){ setAutoStatus('Auto-save needs sign-in'); return; }
+    if(autoSaving){ autoPending=true; return; }
+    autoSaving=true; setAutoStatus('Saving…');
+    try{ const ok=await saveToGitHub(buildSaveHtml(), true); setAutoStatus(ok?'Saved ✓':'Not saved'); }
+    catch(e){ setAutoStatus('Offline — retrying'); scheduleAutoSave(15000); }
+    autoSaving=false;
+    if(autoPending){ autoPending=false; scheduleAutoSave(800); }
+  }
+  if(main){ new MutationObserver(function(){ if(document.body.classList.contains('edit-on')) scheduleAutoSave(); })
+              .observe(main,{subtree:true,childList:true,characterData:true,attributes:true}); }
+
+  /* ---- to-do items ---- */
+  function caretEnd(el){ if(!el) return; const r=document.createRange(); r.selectNodeContents(el); r.collapse(false);
+    const s=window.getSelection(); s.removeAllRanges(); s.addRange(r); }
+  function mkBox(){ const cb=document.createElement('input'); cb.type='checkbox'; cb.className='todo-box'; cb.setAttribute('contenteditable','false'); return cb; }
+  function mkTodoP(){ const p=document.createElement('p'); p.className='todo';
+    const span=document.createElement('span'); span.className='todo-text'; span.setAttribute('data-ph','To-do item'); span.innerHTML='<br>';
+    p.appendChild(mkBox()); p.appendChild(span); return p; }
+
+  // repair to-do rows that Enter previously mangled into empty flex rows
+  function healTodos(){
+    document.querySelectorAll('p.todo').forEach(function(p){
+      if(!p.querySelector('.todo-box') && !p.textContent.trim()){
+        const q=document.createElement('p'); q.className='doc'; q.innerHTML='<br>'; p.replaceWith(q); return;
+      }
+      if(!p.querySelector('.todo-box')) p.insertBefore(mkBox(), p.firstChild);
+      if(!p.querySelector('.todo-text')){
+        const span=document.createElement('span'); span.className='todo-text';
+        const box=p.querySelector('.todo-box'); let n=box?box.nextSibling:p.firstChild;
+        while(n){ const nx=n.nextSibling; span.appendChild(n); n=nx; }
+        p.appendChild(span);
+      }
+      const box=p.querySelector('.todo-box'); p.classList.toggle('done', !!(box&&box.checked));
+    });
+    document.querySelectorAll('li.todo-li').forEach(function(li){
+      const box=li.querySelector('.todo-box'); li.classList.toggle('done', !!(box&&box.checked));
+    });
+  }
+
+  if(main) main.addEventListener('keydown', function(e){
+    if(e.key!=='Enter'||e.shiftKey||!document.body.classList.contains('edit-on')) return;
+    const sel=window.getSelection(); if(!sel||!sel.rangeCount) return;
+    let n=sel.anchorNode; if(n&&n.nodeType===3) n=n.parentElement;
+    if(!n||!n.closest) return;
+    const row=n.closest('#main p.todo, #main li.todo-li');
+    if(!row) return;
+    e.preventDefault(); e.stopPropagation();
+    const txt=row.querySelector('.todo-text');
+    if(txt && !txt.textContent.trim()){            // empty item + Enter = leave the checklist
+      const plain=document.createElement(row.tagName==='LI'?'li':'p');
+      if(row.tagName!=='LI') plain.className='doc';
+      plain.innerHTML='<br>'; row.replaceWith(plain); caretEnd(plain); return;
+    }
+    if(row.tagName==='LI'){
+      const li=document.createElement('li'); li.className='todo-li';
+      const span=document.createElement('span'); span.className='todo-text'; span.innerHTML='<br>';
+      li.appendChild(mkBox()); li.appendChild(span);
+      row.insertAdjacentElement('afterend',li); caretEnd(span);
+    } else {
+      const p=mkTodoP(); row.insertAdjacentElement('afterend',p); caretEnd(p.querySelector('.todo-text'));
+    }
+  }, true);
+
+  // ticking a box works outside edit mode too, and is persisted
+  if(main) main.addEventListener('change', function(e){
+    const cb=e.target&&e.target.closest?e.target.closest('.todo-box'):null; if(!cb) return;
+    const row=cb.closest('.todo, .todo-li'); if(row) row.classList.toggle('done', cb.checked);
+    if(location.protocol==='http:'||location.protocol==='https:') saveSoon();
+  });
+
+  // nothing new here may break the note itself, so both run guarded
+  try{ healTodos(); }catch(e){ console.warn('healTodos failed', e); }
+  try{ freshenOnLoad(); }catch(e){ console.warn('freshenOnLoad failed', e); }
+
 
   $('#editToggle').addEventListener('click', enterEdit);
   $('#editbar').addEventListener('click', e=>{ const btn=e.target.closest('button'); if(!btn)return; ({ section:addSection, sub:addSub, para:addParagraph, table:addTable, image:addImage, part:addPart, delete:deleteBlock, undo:doUndo, format:toggleFmt, save:save, done:exitEdit }[btn.dataset.act]||(function(){}))(); });
@@ -654,7 +812,28 @@
     function setGroup(g){ var groups=document.querySelectorAll('.fmtgrp'); if(activeGroup===g){ activeGroup=null; panel.style.display='none'; fmtbar.classList.remove('open'); groups.forEach(function(x){x.classList.remove('active');}); return; } activeGroup=g; groups.forEach(function(x){ x.classList.toggle('active', x.dataset.group===g); }); renderPanel(g); fmtbar.classList.add('open'); }
     function setBlock(type){ const sel=window.getSelection(); if(!sel||!sel.rangeCount) return; let n=sel.anchorNode; if(n&&n.nodeType===3)n=n.parentElement; const block=(n&&n.closest)?n.closest('#main h2,#main h3,#main h4,#main h5,#main p,#main li'):null; if(!block) return; snapshot(); const map={part:['h2','part'],sec:['h3','sec'],h1:['h4','sub'],h2:['h5','subsub'],body:['p','doc']}; const cfg=map[type]; if(!cfg) return; const el=document.createElement(cfg[0]); el.className=cfg[1]; while(block.firstChild) el.appendChild(block.firstChild); if(!el.textContent.trim()&&!el.querySelector('img')) el.setAttribute('data-ph','Write here…'); block.replaceWith(el); const r=document.createRange(); r.selectNodeContents(el); r.collapse(false); sel.removeAllRanges(); sel.addRange(r); rebuildToc(document); refreshObserver(); }
     function placeCaretEnd(el){ const r=document.createRange(); r.selectNodeContents(el); r.collapse(false); const s=window.getSelection(); s.removeAllRanges(); s.addRange(r); }
-    function makeTodo(){ const sel=window.getSelection(); if(!sel||!sel.rangeCount) return; let n=sel.anchorNode; if(n&&n.nodeType===3)n=n.parentElement; const block=(n&&n.closest)?n.closest('#main p, #main li, #main h2,#main h3,#main h4,#main h5'):null; if(!block) return; snapshot(); if(block.classList.contains('todo')){ const q=document.createElement('p'); q.className='doc'; const txt=block.querySelector('.todo-text'); if(txt){ while(txt.firstChild) q.appendChild(txt.firstChild); } if(!q.textContent.trim()) q.setAttribute('data-ph','Write here…'); block.replaceWith(q); placeCaretEnd(q); return; } const p=document.createElement('p'); p.className='todo'; const cb=document.createElement('input'); cb.type='checkbox'; cb.className='todo-box'; cb.setAttribute('contenteditable','false'); const span=document.createElement('span'); span.className='todo-text'; while(block.firstChild) span.appendChild(block.firstChild); if(!span.textContent.trim()) span.setAttribute('data-ph','To-do item'); p.appendChild(cb); p.appendChild(span); block.replaceWith(p); placeCaretEnd(span); }
+    function makeTodo(){ const sel=window.getSelection(); if(!sel||!sel.rangeCount) return; let n=sel.anchorNode; if(n&&n.nodeType===3)n=n.parentElement; const block=(n&&n.closest)?n.closest('#main p, #main li, #main h2,#main h3,#main h4,#main h5'):null; if(!block) return; snapshot();
+      if(block.tagName==='LI'){
+        const list=block.closest('ul,ol'); const items=list?Array.from(list.children).filter(x=>x.tagName==='LI'):[block];
+        const turnOff=block.classList.contains('todo-li');
+        items.forEach(function(li){
+          if(turnOff){
+            if(!li.classList.contains('todo-li')) return;
+            const t=li.querySelector('.todo-text'); li.classList.remove('todo-li','done');
+            const box=li.querySelector('.todo-box'); if(box) box.remove();
+            if(t){ while(t.firstChild) li.insertBefore(t.firstChild, t); t.remove(); }
+          } else {
+            if(li.classList.contains('todo-li')) return;
+            const cb=document.createElement('input'); cb.type='checkbox'; cb.className='todo-box'; cb.setAttribute('contenteditable','false');
+            const span=document.createElement('span'); span.className='todo-text';
+            while(li.firstChild) span.appendChild(li.firstChild);
+            if(!span.textContent.trim()) span.setAttribute('data-ph','To-do item');
+            li.className='todo-li'; li.appendChild(cb); li.appendChild(span);
+          }
+        });
+        placeCaretEnd(block.querySelector('.todo-text')||block); return;
+      }
+      if(block.classList.contains('todo')){ const q=document.createElement('p'); q.className='doc'; const txt=block.querySelector('.todo-text'); if(txt){ while(txt.firstChild) q.appendChild(txt.firstChild); } if(!q.textContent.trim()) q.setAttribute('data-ph','Write here…'); block.replaceWith(q); placeCaretEnd(q); return; } const p=document.createElement('p'); p.className='todo'; const cb=document.createElement('input'); cb.type='checkbox'; cb.className='todo-box'; cb.setAttribute('contenteditable','false'); const span=document.createElement('span'); span.className='todo-text'; while(block.firstChild) span.appendChild(block.firstChild); if(!span.textContent.trim()) span.setAttribute('data-ph','To-do item'); p.appendChild(cb); p.appendChild(span); block.replaceWith(p); placeCaretEnd(span); }
     main.addEventListener('change', function(e){ const cb=e.target.closest('.todo-box'); if(cb){ const p=cb.closest('.todo'); if(p) p.classList.toggle('done', cb.checked); } });
     function curCell(){ const s=window.getSelection(); if(!s||!s.rangeCount) return null; let n=s.anchorNode; if(n&&n.nodeType===3)n=n.parentElement; return (n&&n.closest)?n.closest('#main td, #main th'):null; }
     function tblOp(op){ const cell=curCell(); if(!cell){ toast('Put the cursor in a table cell first.'); return; } snapshot(); const tr=cell.parentElement, t=cell.closest('table'), idx=cell.cellIndex, rows=function(){return Array.from(t.rows);};
@@ -779,6 +958,7 @@
   const prev=window.__beforeSave; window.__beforeSave=function(){ resetAll(); if(typeof prev==='function') prev(); };
 })();
 </script>
+
 
 
 
