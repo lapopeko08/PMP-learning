@@ -3,7 +3,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Notes</title>
-<meta name="note-rev" content="muf84voj-l2y59e">
+<meta name="note-rev" content="muf82k5q-2qzns0">
 <link rel="icon" href="favicon.ico?v=4" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=3">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=3">
@@ -665,6 +665,32 @@
   async function save(){ const html=buildSaveHtml(); if(location.protocol==='http:'||location.protocol==='https:') await saveToGitHub(html); else await saveLocal(html); }
   window.__save=save;
 
+  /* Pasted/imported text carries <font> tags and inline font-size/color, which beat the
+     block's own CSS. Converting a block therefore appeared to do nothing (Section) or to
+     come out wrong (Body). Drop only the properties that fight the block style; bold,
+     italic, underline and highlight survive. */
+  function stripBlockStyling(root){
+    if(!root) return;
+    root.querySelectorAll('font').forEach(function(f){
+      const p=f.parentNode; if(!p) return;
+      while(f.firstChild) p.insertBefore(f.firstChild, f);
+      f.remove();
+    });
+    const KILL=['font-size','color','font-family','font-weight','line-height','text-transform','letter-spacing'];
+    root.querySelectorAll('[style]').forEach(function(e){
+      KILL.forEach(function(prop){ e.style.removeProperty(prop); });
+      if(!e.getAttribute('style')) e.removeAttribute('style');
+    });
+    // spans that no longer carry anything are just noise
+    root.querySelectorAll('span:not([style]):not([class])').forEach(function(s){
+      const p=s.parentNode; if(!p) return;
+      while(s.firstChild) p.insertBefore(s.firstChild, s);
+      s.remove();
+    });
+    root.removeAttribute && root.removeAttribute('style');
+  }
+
+
   /* ============ added 2026-09-22 ============
      - freshness guard: a page loaded from a stale cache can no longer overwrite newer notes
      - auto-save, ported from the local iCloud copy, now conflict-safe
@@ -810,7 +836,7 @@
     let activeGroup=null;
     function renderPanel(g){ const arr=GROUPS[g]||[]; panel.innerHTML=arr.map(function(o){ if(o.sep) return '<span class="fsep"></span>'; var a='',cls=''; if(o.cmd)a='data-cmd="'+o.cmd+'"'; else if(o.block){a='data-block="'+o.block+'"';cls=' class="wide"';} else if(o.act){a='data-act="'+o.act+'"';cls=' class="wide"';} else if(o.todo){a='data-todo="1"';cls=' class="wide"';} else if(o.tbl){a='data-tbl="'+o.tbl+'"';cls=' class="wide"';} else if(o.imgsize)a='data-imgsize="'+o.imgsize+'"'; else if(o.imgalign)a='data-imgalign="'+o.imgalign+'"'; else if(o.imgdel)a='data-imgdel="1"'; else if(o.color)a='data-color="'+o.color+'" style="color:'+o.color+'"'; else if(o.hilite)a='data-hilite="'+o.hilite+'"'+(o.hilite!=='transparent'?' style="background:'+o.hilite+'"':''); else if(o.liststyle)a='data-liststyle="'+o.liststyle+'"'; else if(o.size)a='data-size="'+o.size+'"'; return '<button type="button"'+cls+' '+a+' title="'+o.t+'">'+o.label+'</button>'; }).join(''); panel.style.display=arr.length?'flex':'none'; }
     function setGroup(g){ var groups=document.querySelectorAll('.fmtgrp'); if(activeGroup===g){ activeGroup=null; panel.style.display='none'; fmtbar.classList.remove('open'); groups.forEach(function(x){x.classList.remove('active');}); return; } activeGroup=g; groups.forEach(function(x){ x.classList.toggle('active', x.dataset.group===g); }); renderPanel(g); fmtbar.classList.add('open'); }
-    function setBlock(type){ const sel=window.getSelection(); if(!sel||!sel.rangeCount) return; let n=sel.anchorNode; if(n&&n.nodeType===3)n=n.parentElement; const block=(n&&n.closest)?n.closest('#main h2,#main h3,#main h4,#main h5,#main p,#main li'):null; if(!block) return; snapshot(); const map={part:['h2','part'],sec:['h3','sec'],h1:['h4','sub'],h2:['h5','subsub'],body:['p','doc']}; const cfg=map[type]; if(!cfg) return; const el=document.createElement(cfg[0]); el.className=cfg[1]; while(block.firstChild) el.appendChild(block.firstChild); if(!el.textContent.trim()&&!el.querySelector('img')) el.setAttribute('data-ph','Write here…'); block.replaceWith(el); const r=document.createRange(); r.selectNodeContents(el); r.collapse(false); sel.removeAllRanges(); sel.addRange(r); rebuildToc(document); refreshObserver(); }
+    function setBlock(type){ const sel=window.getSelection(); if(!sel||!sel.rangeCount) return; let n=sel.anchorNode; if(n&&n.nodeType===3)n=n.parentElement; const block=(n&&n.closest)?n.closest('#main h2,#main h3,#main h4,#main h5,#main p,#main li'):null; if(!block) return; snapshot(); const map={part:['h2','part'],sec:['h3','sec'],h1:['h4','sub'],h2:['h5','subsub'],body:['p','doc']}; const cfg=map[type]; if(!cfg) return; const el=document.createElement(cfg[0]); el.className=cfg[1]; while(block.firstChild) el.appendChild(block.firstChild); stripBlockStyling(el); if(!el.textContent.trim()&&!el.querySelector('img')) el.setAttribute('data-ph','Write here…'); block.replaceWith(el); const r=document.createRange(); r.selectNodeContents(el); r.collapse(false); sel.removeAllRanges(); sel.addRange(r); rebuildToc(document); refreshObserver(); }
     function placeCaretEnd(el){ const r=document.createRange(); r.selectNodeContents(el); r.collapse(false); const s=window.getSelection(); s.removeAllRanges(); s.addRange(r); }
     function makeTodo(){ const sel=window.getSelection(); if(!sel||!sel.rangeCount) return; let n=sel.anchorNode; if(n&&n.nodeType===3)n=n.parentElement; const block=(n&&n.closest)?n.closest('#main p, #main li, #main h2,#main h3,#main h4,#main h5'):null; if(!block) return; snapshot();
       if(block.tagName==='LI'){
@@ -826,7 +852,7 @@
             if(li.classList.contains('todo-li')) return;
             const cb=document.createElement('input'); cb.type='checkbox'; cb.className='todo-box'; cb.setAttribute('contenteditable','false');
             const span=document.createElement('span'); span.className='todo-text';
-            while(li.firstChild) span.appendChild(li.firstChild);
+            while(li.firstChild) span.appendChild(li.firstChild); stripBlockStyling(span);
             if(!span.textContent.trim()) span.setAttribute('data-ph','To-do item');
             li.className='todo-li'; li.appendChild(cb); li.appendChild(span);
           }
