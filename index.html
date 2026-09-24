@@ -3,7 +3,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Notes</title>
-<meta name="note-rev" content="muf8pmux-6re7a0">
+<meta name="note-rev" content="muf8pdl3-syhi3n">
 <link rel="icon" href="favicon.ico?v=4" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=3">
 <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png?v=3">
@@ -736,8 +736,9 @@
   /* ---- auto-save ---- */
   var autoTimer=null, autoSaving=false, autoPending=false;
   function setAutoStatus(t){ const el=document.getElementById('autoStatus'); if(el) el.textContent=t; }
-  function scheduleAutoSave(delay){ if(autoTimer) clearTimeout(autoTimer); autoTimer=setTimeout(runAutoSave,(delay===undefined?6000:delay)); }
-  function saveSoon(){ scheduleAutoSave(1500); }
+  const AUTOSAVE_MS=60000;   // one commit a minute at most; Pages needs ~1 min to build
+  function scheduleAutoSave(delay){ if(autoTimer) clearTimeout(autoTimer); autoTimer=setTimeout(runAutoSave,(delay===undefined?AUTOSAVE_MS:delay)); }
+  function saveSoon(){ scheduleAutoSave(8000); }
   async function runAutoSave(){
     if(location.protocol!=='http:'&&location.protocol!=='https:') return;
     if(document.getElementById('stalebar')) return;
@@ -749,7 +750,7 @@
     autoSaving=false;
     if(autoPending){ autoPending=false; scheduleAutoSave(800); }
   }
-  if(main){ new MutationObserver(function(){ if(document.body.classList.contains('edit-on')) scheduleAutoSave(); })
+  if(main){ new MutationObserver(function(){ if(document.body.classList.contains('edit-on')){ setAutoStatus('Unsaved — ⌘S to save now'); scheduleAutoSave(); } })
               .observe(main,{subtree:true,childList:true,characterData:true,attributes:true}); }
 
   /* ---- to-do items ---- */
