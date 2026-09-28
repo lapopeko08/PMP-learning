@@ -834,10 +834,21 @@
     if(!m){ m=document.createElement('meta'); m.setAttribute('name','note-rev'); document.head.insertBefore(m,document.head.firstChild); }
     m.setAttribute('content',v); }
   async function remoteRev(){
-    try{ const r=await fetch(RAW+'?_='+Date.now(),{cache:'no-store'}); if(!r.ok) return null;
-         const m=/<meta name="note-rev" content="([^"]*)"/.exec(await r.text());
-         return m?m[1]:null; }   // no stamp at all = an older copy or CDN lag, not a conflict
-    catch(e){ return null; }
+    // raw.githubusercontent is CDN-cached and ignores cache-busting query strings, so it
+    // returns a stale copy for minutes after a save. That made the freshness check report
+    // a conflict that did not exist, which raised the stale bar and BLOCKED saving.
+    // The contents API is authoritative, so ask that instead.
+    const token = localStorage.getItem('gh-token');
+    const url = 'https://api.github.com/repos/'+GH.owner+'/'+GH.repo+'/contents/'+GH.path
+              + '?ref='+GH.branch+'&_='+Date.now();
+    const headers = { Accept: 'application/vnd.github.raw' };
+    if (token) headers.Authorization = 'Bearer ' + token;
+    try{
+      const r = await fetch(url, { headers, cache:'no-store' });
+      if(!r.ok) return null;                       // unknown - never treat as a conflict
+      const m = /<meta name="note-rev" content="([^"]*)"/.exec(await r.text());
+      return m ? m[1] : null;
+    }catch(e){ return null; }
   }
   async function isCurrent(){ const rr=await remoteRev(); if(rr===null) return true; return rr===myRev()||MY_REVS.has(rr); }
 
