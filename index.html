@@ -589,7 +589,7 @@
             : (kept && onScreen(kept)) ? kept
             : (blockInView() || live || kept);
     if (b && b.parentElement){
-      splitListAndInsert(b, el);
+      b.parentElement.insertBefore(el, b.nextSibling);
       return true;
     }
     lastBox().appendChild(el);
