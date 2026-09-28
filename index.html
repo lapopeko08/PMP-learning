@@ -559,7 +559,16 @@
   $('#addTab').addEventListener('click', addTab);
 
   // ---- edit mode ----
-  function enterEdit(){ document.body.classList.add('edit-on'); main.setAttribute('contenteditable','true'); try{document.execCommand('defaultParagraphSeparator',false,'p');}catch(e){} main.focus(); LAST_CARET_BLOCK=null; toast('Edit mode on. Click text to change it; use the bar to add blocks or ＋ Tab. Double-click a tab to rename. Then Save.'); }
+  function enterEdit(){ document.body.classList.add('edit-on'); main.setAttribute('contenteditable','true'); try{document.execCommand('defaultParagraphSeparator',false,'p');}catch(e){} try{ main.focus({preventScroll:true}); }catch(e){ main.focus(); }
+    LAST_CARET_BLOCK=null;
+    try{
+      const here=blockInView();
+      if(here){
+        const r=document.createRange(); r.selectNodeContents(here); r.collapse(false);
+        const s=window.getSelection(); s.removeAllRanges(); s.addRange(r);
+        LAST_CARET_BLOCK=here;
+      }
+    }catch(e){} toast('Edit mode on. Click text to change it; use the bar to add blocks or ＋ Tab. Double-click a tab to rename. Then Save.'); }
   function exitEdit(){ try{ scheduleAutoSave(150); }catch(e){} document.body.classList.remove('edit-on'); main.removeAttribute('contenteditable'); hideImgbar(); var __fb=document.getElementById('fmtbar'); if(__fb) __fb.classList.remove('open'); rebuildToc(document); refreshObserver(); }
 
   function currentBlock(){
