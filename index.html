@@ -573,7 +573,7 @@
 
   function currentBlock(){
     const sel=window.getSelection();
-    if (sel && sel.rangeCount){ let n=sel.anchorNode; if(n&&n.nodeType===3)n=n.parentElement; const scope=activeTab();
+    if (sel && sel.rangeCount){ let n=sel.anchorNode; if(n&&n.nodeType===3)n=n.parentElement; const scope=((n&&n.closest)?n.closest('.tabpage'):null)||activeTab();
       while (n && scope && scope.contains(n) && n!==scope){ const p=n.parentElement; if (p && (p.classList.contains('doc-block')||p.classList.contains('tabpage')||p.tagName==='SECTION')) return n; n=p; } }
     return null;
   }
@@ -640,6 +640,7 @@
   // ---- save ----
   function buildSaveHtml(){
     if(window.__beforeSave) try{ window.__beforeSave(); }catch(e){}
+    try{ repairTabpages(); wrapLooseText(); }catch(e){ console.warn('repair failed', e); }
     document.querySelectorAll('.todo-box').forEach(function(cb){ const has=cb.hasAttribute('checked'); if(cb.checked && !has) cb.setAttribute('checked',''); else if(!cb.checked && has) cb.removeAttribute('checked'); });
     const clone=document.documentElement.cloneNode(true);
     PENDING_REV=newRev();
@@ -690,6 +691,54 @@
   }
   async function save(){ const html=buildSaveHtml(); if(location.protocol==='http:'||location.protocol==='https:') await saveToGitHub(html); else await saveLocal(html); }
   window.__save=save;
+
+  /* Pressing Enter while the caret sits directly in a tabpage (not inside a paragraph)
+     makes the browser SPLIT that container, cloning <div class="tabpage" id="tpN">.
+     The clone carries the same id, so activeTab() kept returning the original and any
+     text typed into the clone became invisible to the editor - new blocks then fell back
+     to the end of the real tab. Merge the clones back and wrap loose text. */
+  function repairTabpages(){
+    if(!main) return;
+    const home = {};
+    [...main.querySelectorAll('.tabpage')].forEach(function(tp){
+      const id = tp.id || '';
+      if(!home[id]){ home[id] = tp; return; }
+      const dest = home[id];
+      let box = [...dest.querySelectorAll('.doc-block')].pop();
+      if(!box){
+        const s = document.createElement('section');
+        box = document.createElement('div'); box.className = 'doc-block';
+        s.appendChild(box); dest.appendChild(s);
+      }
+      let buf = null;
+      const flush = function(){ if(buf && buf.textContent.trim()) box.appendChild(buf); buf = null; };
+      while(tp.firstChild){
+        const n = tp.firstChild;
+        if(n.nodeType === 1 && /^(P|H2|H3|H4|H5|UL|OL|TABLE|SECTION|DIV|BLOCKQUOTE)$/.test(n.tagName)){
+          flush(); box.appendChild(n);
+        } else {
+          if(!buf){ buf = document.createElement('p'); buf.className = 'doc'; }
+          buf.appendChild(n);
+        }
+      }
+      flush();
+      tp.remove();
+    });
+  }
+  // text typed straight into a doc-block (e.g. right after a table) belongs in a paragraph
+  function wrapLooseText(){
+    if(!main) return;
+    main.querySelectorAll('.doc-block').forEach(function(box){
+      [...box.childNodes].forEach(function(n){
+        if(n.nodeType === 3 && n.textContent.trim()){
+          const p = document.createElement('p'); p.className = 'doc';
+          box.insertBefore(p, n); p.appendChild(n);
+        }
+      });
+    });
+  }
+  try{ repairTabpages(); wrapLooseText(); }catch(e){ console.warn('structure repair failed', e); }
+
 
   /* A bulleted list is one block, so inserting "after the block" dropped the table
      below the WHOLE list - far from the line being typed. If the caret is inside a
