@@ -582,12 +582,14 @@
     const live=currentBlock();
     const kept=rememberedBlock();
     // where you are looking beats a cursor you left somewhere off-screen
-    // the cursor always wins - where you are EDITING, not where you are reading.
-    // the visible block is only a last resort when there has never been a cursor.
-    const b = live || kept || blockInView();
+    // Rule: put it where you can SEE. A cursor you can see is what you are editing,
+    // so it wins. A cursor scrolled off-screen is stale - it is not where you are
+    // working - so the part of the page on screen wins instead.
+    const b = (live && onScreen(live)) ? live
+            : (kept && onScreen(kept)) ? kept
+            : (blockInView() || live || kept);
     if (b && b.parentElement){
       b.parentElement.insertBefore(el, b.nextSibling);
-      if(!live && !kept) toast('Added here — tap in the text to place it exactly.');
       return true;
     }
     lastBox().appendChild(el);
