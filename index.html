@@ -589,7 +589,7 @@
             : (kept && onScreen(kept)) ? kept
             : (blockInView() || live || kept);
     if (b && b.parentElement){
-      b.parentElement.insertBefore(el, b.nextSibling);
+      splitListAndInsert(b, el);
       return true;
     }
     lastBox().appendChild(el);
@@ -690,6 +690,26 @@
   }
   async function save(){ const html=buildSaveHtml(); if(location.protocol==='http:'||location.protocol==='https:') await saveToGitHub(html); else await saveLocal(html); }
   window.__save=save;
+
+  /* A bulleted list is one block, so inserting "after the block" dropped the table
+     below the WHOLE list - far from the line being typed. If the caret is inside a
+     list item, split the list at that item and drop the table in between. */
+  function splitListAndInsert(b, el){
+    const sel = window.getSelection();
+    let n = (sel && sel.rangeCount) ? sel.anchorNode : null;
+    if (n && n.nodeType === 3) n = n.parentElement;
+    const li = (n && n.closest) ? n.closest('li') : null;
+    if (li && (b.tagName === 'UL' || b.tagName === 'OL') && b.contains(li) && li.nextElementSibling){
+      const rest = b.cloneNode(false);
+      let cur = li.nextSibling;
+      while (cur){ const nx = cur.nextSibling; rest.appendChild(cur); cur = nx; }
+      b.parentElement.insertBefore(el, b.nextSibling);
+      if (rest.children.length) b.parentElement.insertBefore(rest, el.nextSibling);
+      return;
+    }
+    b.parentElement.insertBefore(el, b.nextSibling);
+  }
+
 
   function onScreen(el){
     if(!el || !el.isConnected) return false;
