@@ -698,16 +698,36 @@
     const sel = window.getSelection();
     let n = (sel && sel.rangeCount) ? sel.anchorNode : null;
     if (n && n.nodeType === 3) n = n.parentElement;
-    const li = (n && n.closest) ? n.closest('li') : null;
-    if (li && (b.tagName === 'UL' || b.tagName === 'OL') && b.contains(li) && li.nextElementSibling){
-      const rest = b.cloneNode(false);
-      let cur = li.nextSibling;
-      while (cur){ const nx = cur.nextSibling; rest.appendChild(cur); cur = nx; }
-      b.parentElement.insertBefore(el, b.nextSibling);
-      if (rest.children.length) b.parentElement.insertBefore(rest, el.nextSibling);
-      return;
+    if (!n || !b.contains(n) || n === b){ b.parentElement.insertBefore(el, b.nextSibling); return; }
+
+    // 1. caret inside a list item -> cut the list in two at that item
+    const li = n.closest ? n.closest('li') : null;
+    if (li && b.contains(li)){
+      const list = li.parentElement;
+      if (list && (list.tagName === 'UL' || list.tagName === 'OL') && li.nextElementSibling){
+        const rest = list.cloneNode(false);
+        let cur = li.nextSibling;
+        while (cur){ const nx = cur.nextSibling; rest.appendChild(cur); cur = nx; }
+        list.parentElement.insertBefore(rest, list.nextSibling);
+      }
+      n = li.parentElement;   // carry on splitting outwards from the list
     }
-    b.parentElement.insertBefore(el, b.nextSibling);
+
+    // 2. split every wrapper between the caret and the block, so the table lands
+    //    on the line being typed rather than after the whole wrapper
+    let node = n;
+    while (node && node !== b && node.parentElement && node.parentElement !== b.parentElement){
+      const parent = node.parentElement;
+      if (node.nextSibling){
+        const tail = parent.cloneNode(false);
+        let cur = node.nextSibling;
+        while (cur){ const nx = cur.nextSibling; tail.appendChild(cur); cur = nx; }
+        if (tail.childNodes.length) parent.parentElement.insertBefore(tail, parent.nextSibling);
+      }
+      node = parent;
+    }
+    (node && node.parentElement ? node.parentElement : b.parentElement)
+      .insertBefore(el, (node || b).nextSibling);
   }
 
 
