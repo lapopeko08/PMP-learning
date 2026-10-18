@@ -65,17 +65,17 @@
 
   /* ---------- Document content ---------- */
   main { flex:1 1 auto; min-width:0; }
-  section { scroll-margin-top:186px; margin-bottom:52px; }
+  section { scroll-margin-top:186px; margin-bottom:30px; }
   .doc-block { background:transparent; border:none; box-shadow:none; padding:0; }
 
   .part, .sec, .sub, .subsub { scroll-margin-top:186px; }
   h2.part { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.16em; color:var(--olive); margin:0;
-    padding:16px 0; border-top:2px solid var(--ink); border-bottom:1px solid var(--sand); }
-  h3.sec { font-size:26px; font-weight:600; letter-spacing:-.015em; color:var(--ink); margin:0 0 22px; }
-  h4.sub { font-size:16px; font-weight:600; color:var(--ink); margin:30px 0 10px; padding-left:12px; border-left:3px solid var(--olive); }
-  h5.subsub { font-size:11.5px; font-weight:600; text-transform:uppercase; letter-spacing:.12em; color:var(--olive); margin:22px 0 8px; }
+    padding:11px 0; border-top:2px solid var(--ink); border-bottom:1px solid var(--sand); }
+  h3.sec { font-size:26px; font-weight:600; letter-spacing:-.015em; color:var(--ink); margin:0 0 12px; }
+  h4.sub { font-size:16px; font-weight:600; color:var(--ink); margin:20px 0 7px; padding-left:12px; border-left:3px solid var(--olive); }
+  h5.subsub { font-size:11.5px; font-weight:600; text-transform:uppercase; letter-spacing:.12em; color:var(--olive); margin:16px 0 5px; }
 
-  .doc-block > p { margin:10px 0; font-size:15px; line-height:1.7; color:#2b2b2b; }
+  .doc-block > p { margin:6px 0; font-size:15px; line-height:1.6; color:#2b2b2b; }
   p.indent { margin-left:32px; }
   p.tab { margin-left:32px; }
 
@@ -201,8 +201,8 @@
   .fmtbar .fmtpanel button{ font-family:var(--font); font-size:13px; font-weight:600; color:var(--ink); background:#fff; border:none; border-radius:5px; padding:6px 10px; cursor:pointer; min-width:30px; line-height:1; }
   .fmtbar button:hover{ background:var(--sand); }
   .fmtbar .sep{ width:1px; height:20px; background:#4a4a4a; margin:0 2px; }
-  .doc-block ul{ margin:10px 0 10px 6px; padding-left:22px; }
-  .doc-block li{ margin:4px 0; font-size:15px; line-height:1.6; color:#2b2b2b; }
+  .doc-block ul{ margin:6px 0 6px 6px; padding-left:22px; }
+  .doc-block li{ margin:2px 0; font-size:15px; line-height:1.55; color:#2b2b2b; }
   .searchbar{ padding:6px 30px 10px; display:flex; align-items:center; gap:10px; }
   .note-search{ flex:1; max-width:440px; font-family:var(--font); font-size:14px; color:var(--ink); background:#fff; border:1px solid var(--sand); border-radius:8px; padding:8px 12px; }
   .note-count{ font-size:12px; color:var(--muted); white-space:nowrap; }
@@ -227,6 +227,30 @@
   .todo-text{ flex:1; }
   .todo.done .todo-text{ text-decoration:line-through; color:#9a958c; }
   body.edit-on [data-ph]:empty::before{ content:attr(data-ph); color:#b3ad9f; pointer-events:none; }
+
+  /* ---------- TIGHTER SPACING ---------- */
+  /* Body text was only styled as a direct child of .doc-block, so a paragraph
+     made anywhere deeper (in a table, a list, a nested block) got no styling. */
+  p.doc { margin:6px 0; font-size:15px; line-height:1.6; color:#2b2b2b; }
+  td p.doc, th p.doc { margin:3px 0; }
+
+  /* no leading gap when a heading opens a block, and no double gap when one
+     heading follows another */
+  .doc-block > :first-child,
+  section > :first-child { margin-top:0; }
+  h3.sec + h4.sub, h3.sec + h5.subsub,
+  h4.sub + h5.subsub, h2.part + h3.sec { margin-top:8px; }
+
+  /* empty paragraphs left behind by editing added a full blank line each.
+     Collapse them when reading; keep them clickable while editing. */
+  .doc-block p:empty { margin:0; height:0; }
+  body.edit-on .doc-block p:empty { height:1.3em; margin:2px 0; }
+
+  /* a paragraph holding nothing but a line break is a deliberate blank line,
+     but it does not need a paragraph gap on top of it */
+  .doc-block > p > br:only-child { line-height:1.1; }
+
+  table.wt { margin:10px 0; }
 </style>
 </head>
 <body class="">
