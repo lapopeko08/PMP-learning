@@ -70,8 +70,8 @@
   .doc-block { background:transparent; border:none; box-shadow:none; padding:0; }
 
   .part, .sec, .sub, .subsub { scroll-margin-top:150px; }
-  h2.part { font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.14em;
-    color:var(--chapter); margin:44px 0 0; padding:14px 0 0; border-top:2px solid var(--chapter); }
+  h2.part { font-size:30px; font-weight:700; letter-spacing:-.02em;
+    color:var(--chapter); margin:48px 0 0; padding:16px 0 0; border-top:2px solid var(--chapter); }
   h3.sec { font-size:25px; font-weight:700; letter-spacing:-.02em; color:var(--section); margin:26px 0 12px; }
   h4.sub { font-size:18px; font-weight:700; color:var(--ink); margin:26px 0 8px; padding-left:12px; border-left:3px solid var(--olive); }
   h5.subsub { font-size:16.5px; font-weight:600; color:var(--ink); margin:20px 0 5px;
@@ -197,7 +197,7 @@
   .inv-tools{ display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
 
   /* ---------- Formatting toolbar ---------- */
-  .fmtbar{ display:none; flex-direction:column; background:var(--ink); padding:8px 30px 10px; border-top:1px solid #3a3a3a; }
+  .fmtbar{ display:none; }
   body.edit-on .fmtbar.open{ display:flex; }
   .fmtbar .fmtpanel button{ font-family:var(--font); font-size:13px; font-weight:600; color:var(--ink); background:#fff; border:none; border-radius:5px; padding:6px 10px; cursor:pointer; min-width:30px; line-height:1; }
   .fmtbar button:hover{ background:var(--sand); }
@@ -251,12 +251,17 @@
   table.wt { margin:10px 0; }
 
   /* ---- format row: groups and their buttons share one line ---- */
-  .editbar .grow{ flex:1 1 auto; }
+  .editbar .grow{ flex:0 0 10px; }
   .editbar .hl{ background:#ffe08a; }
   .fmtbar{ display:none; }
-  body.edit-on .fmtbar.open{ display:flex; align-items:center; gap:4px; background:transparent;
-    border:none; padding:0; margin-left:4px; padding-left:10px; border-left:1px solid #4a4a4a; }
-  .fmtpanel{ display:flex; gap:4px; align-items:center; flex-wrap:nowrap; }
+  body.edit-on .fmtbar.open{ display:flex; flex-direction:row; align-items:center; gap:4px;
+    background:transparent; border:none; padding:0 0 0 10px; margin-left:4px;
+    border-left:1px solid #4a4a4a; flex:0 0 auto; }
+  .fmtpanel{ display:flex; flex-direction:row; gap:4px; align-items:center; flex-wrap:nowrap; }
+  .fmtpanel button{ flex:0 0 auto; white-space:nowrap; }
+  /* the open group's buttons are the thing you just asked for — make them read as live */
+  .editbar .fmtgrp.active{ background:#fff; color:var(--ink); border-color:#fff; }
+  @media (hover:hover){ .editbar .fmtgrp:hover{ background:#4a4a4a; color:#fff; } }
 
   @media (min-width:821px){
     .editbar{ flex-wrap:nowrap; overflow-x:auto; overflow-y:hidden; scrollbar-width:thin; }
@@ -278,7 +283,7 @@
     .editbar button{ flex:0 0 auto; }
     section { scroll-margin-top:200px; margin-bottom:26px; }
     .part, .sec, .sub, .subsub { scroll-margin-top:200px; }
-    h2.part { font-size:11.5px; margin-top:32px; }
+    h2.part { font-size:24px; margin-top:34px; }
     h3.sec { font-size:21px; }
     h4.sub { font-size:16.5px; }
     h5.subsub { font-size:15.5px; }
@@ -738,12 +743,40 @@
   if(fmtbar){
     const panel=document.getElementById('fmtpanel');
     const GROUPS={
-      para:[{cmd:'insertUnorderedList',label:'• Bullets',t:'Bullet list'},{cmd:'insertOrderedList',label:'1. Numbering',t:'Numbered list'},{todo:1,label:'☑ To-do',t:'To-do checkbox'},{sep:1},{liststyle:'disc',label:'•',t:'Disc bullets'},{liststyle:'circle',label:'◦',t:'Circle bullets'},{liststyle:'square',label:'▪',t:'Square bullets'},{sep:1},{cmd:'outdent',label:'⇤ Indent −',t:'Decrease indent'},{cmd:'indent',label:'⇥ Indent ＋',t:'Increase indent'},{sep:1},{cmd:'justifyLeft',label:'↤',t:'Align left'},{cmd:'justifyCenter',label:'↔',t:'Centre'},{cmd:'justifyRight',label:'↦',t:'Align right'}],
+      para:[{cmd:'insertOrderedList',label:'1. Numbering',t:'Numbered list'},{cmd:'insertUnorderedList',label:'• Bullets',t:'Bullet list'},{cmd:'outdent',label:'⇤ Indent −',t:'Decrease indent'},{cmd:'indent',label:'⇥ Indent ＋',t:'Increase indent'},{todo:1,label:'☑ To-do',t:'To-do checkbox'},{sep:1},{liststyle:'disc',label:'•',t:'Disc bullets'},{liststyle:'circle',label:'◦',t:'Circle bullets'},{liststyle:'square',label:'▪',t:'Square bullets'},{sep:1},{cmd:'justifyLeft',label:'↤',t:'Align left'},{cmd:'justifyCenter',label:'↔',t:'Centre'},{cmd:'justifyRight',label:'↦',t:'Align right'}],
       style:[{block:'part',label:'Chapter',t:'Chapter divider'},{block:'sec',label:'Section',t:'Section'},{block:'h1',label:'Heading 1',t:'Heading 1'},{block:'h2',label:'Heading 2',t:'Heading 2'},{block:'body',label:'Body',t:'Body text'}],
       insert:[{act:'table',label:'▦ Table',t:'Insert table'},{act:'image',label:'🖼 Image',t:'Insert image'},{sep:1},{tbl:'header',label:'Header row',t:'Toggle header row'},{tbl:'addrow',label:'＋ Row',t:'Add row'},{tbl:'addcol',label:'＋ Col',t:'Add column'},{tbl:'delrow',label:'⌫ Row',t:'Delete row'},{tbl:'delcol',label:'⌫ Col',t:'Delete column'},{sep:1},{tbl:'merge',label:'Merge →',t:'Merge with right cell'},{tbl:'split',label:'Split',t:'Split merged cell'},{tbl:'colnarrow',label:'Col −',t:'Narrower column'},{tbl:'colwider',label:'Col ＋',t:'Wider column'},{sep:1},{imgsize:'30',label:'S',t:'Small image'},{imgsize:'50',label:'M',t:'Medium image'},{imgsize:'75',label:'L',t:'Large image'},{imgsize:'100',label:'Full',t:'Full width'},{imgalign:'left',label:'↤',t:'Align left'},{imgalign:'center',label:'↔',t:'Centre'},{imgalign:'right',label:'↦',t:'Align right'},{imgdel:'1',label:'🗑',t:'Delete image'}]
     };
     let activeGroup=null;
-    function renderPanel(g){ const arr=GROUPS[g]||[]; panel.innerHTML=arr.map(function(o){ if(o.sep) return '<span class="fsep"></span>'; var a='',cls=''; if(o.cmd)a='data-cmd="'+o.cmd+'"'; else if(o.block){a='data-block="'+o.block+'"';cls=' class="wide"';} else if(o.act){a='data-act="'+o.act+'"';cls=' class="wide"';} else if(o.todo){a='data-todo="1"';cls=' class="wide"';} else if(o.tbl){a='data-tbl="'+o.tbl+'"';cls=' class="wide"';} else if(o.imgsize)a='data-imgsize="'+o.imgsize+'"'; else if(o.imgalign)a='data-imgalign="'+o.imgalign+'"'; else if(o.imgdel)a='data-imgdel="1"'; else if(o.color)a='data-color="'+o.color+'" style="color:'+o.color+'"'; else if(o.hilite)a='data-hilite="'+o.hilite+'"'+(o.hilite!=='transparent'?' style="background:'+o.hilite+'"':''); else if(o.liststyle)a='data-liststyle="'+o.liststyle+'"'; else if(o.size)a='data-size="'+o.size+'"'; return '<button type="button"'+cls+' '+a+' title="'+o.t+'">'+o.label+'</button>'; }).join(''); panel.style.display=arr.length?'flex':'none'; }
+
+    /* Insert stays short — Table and Image, as asked. The row/column and image
+       controls only appear once the caret is actually in a table or an image is
+       selected, so the bar never fills with buttons that would do nothing. */
+    function caretInTable(){
+      var sel=window.getSelection(); if(!sel||!sel.rangeCount) return false;
+      var n=sel.anchorNode; if(n&&n.nodeType===3)n=n.parentElement;
+      return !!(n && n.closest && n.closest('#main table'));
+    }
+    function groupItems(g){
+      if(g!=='insert') return GROUPS[g]||[];
+      var items=[{act:'table',label:'▦ Table',t:'Insert a table'},
+                 {act:'image',label:'🖼 Image',t:'Insert an image'}];
+      if(caretInTable()) items=items.concat([{sep:1},
+        {tbl:'header',label:'Header row',t:'Toggle header row'},
+        {tbl:'addrow',label:'＋ Row',t:'Add row'},{tbl:'addcol',label:'＋ Col',t:'Add column'},
+        {tbl:'delrow',label:'⌫ Row',t:'Delete row'},{tbl:'delcol',label:'⌫ Col',t:'Delete column'},
+        {tbl:'merge',label:'Merge →',t:'Merge with the cell to the right'},
+        {tbl:'split',label:'Split',t:'Split a merged cell'},
+        {tbl:'colnarrow',label:'Col −',t:'Narrower column'},
+        {tbl:'colwider',label:'Col ＋',t:'Wider column'}]);
+      if(typeof selImg!=='undefined' && selImg) items=items.concat([{sep:1},
+        {imgsize:'30',label:'S',t:'Small'},{imgsize:'50',label:'M',t:'Medium'},
+        {imgsize:'75',label:'L',t:'Large'},{imgsize:'100',label:'Full',t:'Full width'},
+        {imgalign:'left',label:'↤',t:'Align left'},{imgalign:'center',label:'↔',t:'Centre'},
+        {imgalign:'right',label:'↦',t:'Align right'},{imgdel:'1',label:'🗑',t:'Delete image'}]);
+      return items;
+    }
+    function renderPanel(g){ const arr=groupItems(g); panel.innerHTML=arr.map(function(o){ if(o.sep) return '<span class="fsep"></span>'; var a='',cls=''; if(o.cmd)a='data-cmd="'+o.cmd+'"'; else if(o.block){a='data-block="'+o.block+'"';cls=' class="wide"';} else if(o.act){a='data-act="'+o.act+'"';cls=' class="wide"';} else if(o.todo){a='data-todo="1"';cls=' class="wide"';} else if(o.tbl){a='data-tbl="'+o.tbl+'"';cls=' class="wide"';} else if(o.imgsize)a='data-imgsize="'+o.imgsize+'"'; else if(o.imgalign)a='data-imgalign="'+o.imgalign+'"'; else if(o.imgdel)a='data-imgdel="1"'; else if(o.color)a='data-color="'+o.color+'" style="color:'+o.color+'"'; else if(o.hilite)a='data-hilite="'+o.hilite+'"'+(o.hilite!=='transparent'?' style="background:'+o.hilite+'"':''); else if(o.liststyle)a='data-liststyle="'+o.liststyle+'"'; else if(o.size)a='data-size="'+o.size+'"'; return '<button type="button"'+cls+' '+a+' title="'+o.t+'">'+o.label+'</button>'; }).join(''); panel.style.display=arr.length?'flex':'none'; }
     function setGroup(g){ var groups=document.querySelectorAll('.fmtgrp'); if(activeGroup===g){ activeGroup=null; panel.style.display='none'; fmtbar.classList.remove('open'); groups.forEach(function(x){x.classList.remove('active');}); return; } activeGroup=g; groups.forEach(function(x){ x.classList.toggle('active', x.dataset.group===g); }); renderPanel(g); fmtbar.classList.add('open'); }
     function setBlock(type){ const sel=window.getSelection(); if(!sel||!sel.rangeCount) return; let n=sel.anchorNode; if(n&&n.nodeType===3)n=n.parentElement; const block=(n&&n.closest)?n.closest('#main h2,#main h3,#main h4,#main h5,#main p,#main li'):null; if(!block){ toast('Click inside the text you want to restyle first.'); return; } snapshot(); const map={part:['h2','part'],sec:['h3','sec'],h1:['h4','sub'],h2:['h5','subsub'],body:['p','doc']}; const cfg=map[type]; if(!cfg) return; const el=document.createElement(cfg[0]); el.className=cfg[1]; while(block.firstChild) el.appendChild(block.firstChild); stripBlockStyling(el); if(!el.textContent.trim()&&!el.querySelector('img')){ el.innerHTML=''; el.setAttribute('data-ph', PH_FOR_TYPE[type]||'Write here…'); } block.replaceWith(el); const r=document.createRange(); r.selectNodeContents(el); r.collapse(false); sel.removeAllRanges(); sel.addRange(r); rebuildToc(document); refreshObserver(); }
     function placeCaretEnd(el){ const r=document.createRange(); r.selectNodeContents(el); r.collapse(false); const s=window.getSelection(); s.removeAllRanges(); s.addRange(r); }
@@ -763,6 +796,15 @@
     fmtbar.addEventListener('mousedown', function(e){ e.preventDefault(); });
     document.addEventListener('mousedown', function(e){ if(e.target.closest('.fmtgrp')) e.preventDefault(); });
     document.addEventListener('click', function(e){ var g=e.target.closest('.fmtgrp'); if(g) setGroup(g.dataset.group); });
+    // on a mouse, sliding across the group names reveals each one's buttons.
+    // Tap still toggles, so this changes nothing on the phone.
+    if(window.matchMedia && window.matchMedia('(hover:hover)').matches){
+      document.addEventListener('mouseover', function(e){
+        if(!document.body.classList.contains('edit-on')) return;
+        var g=e.target.closest && e.target.closest('.fmtgrp');
+        if(g && g.dataset.group!==activeGroup) setGroup(g.dataset.group);
+      });
+    }
     document.addEventListener('pointerdown', function(e){ if(!document.body.classList.contains('edit-on')) return; if(e.target.closest('.editbar')||e.target.closest('.fmtbar')) return; if(activeGroup) setGroup(activeGroup); });
     function fmtClick(e){
       const grp=e.target.closest('.fmtgrp'); if(grp){ setGroup(grp.dataset.group); return; }
