@@ -254,11 +254,22 @@
   .editbar .grow{ flex:0 0 10px; }
   .editbar .hl{ background:#ffe08a; }
   .fmtbar{ display:none; }
-  body.edit-on .fmtbar.open{ display:flex; flex-direction:row; align-items:center; gap:4px;
-    background:transparent; border:none; padding:0 0 0 10px; margin-left:4px;
-    border-left:1px solid #4a4a4a; flex:0 0 auto; }
-  .fmtpanel{ display:flex; flex-direction:row; gap:4px; align-items:center; flex-wrap:nowrap; }
+  .topbar{ position:relative; }
+  body.edit-on .fmtbar.open{
+    display:flex; position:absolute; z-index:40; top:0; left:0;
+    background:#272727; border:1px solid #4f4f4f; border-radius:10px;
+    padding:8px; box-shadow:0 12px 30px rgba(26,26,26,.34);
+    max-width:min(620px, calc(100vw - 24px));
+  }
+  /* a small wedge pointing at the group it belongs to */
+  body.edit-on .fmtbar.open::before{
+    content:''; position:absolute; top:-5px; left:var(--arrow,18px);
+    width:9px; height:9px; background:#272727; border-left:1px solid #4f4f4f;
+    border-top:1px solid #4f4f4f; transform:rotate(45deg);
+  }
+  .fmtpanel{ display:flex; flex-direction:row; gap:5px; align-items:center; flex-wrap:wrap; }
   .fmtpanel button{ flex:0 0 auto; white-space:nowrap; }
+  .fmtpanel .fsep{ flex-basis:100%; height:0; margin:1px 0; background:none; }
   /* the open group's buttons are the thing you just asked for — make them read as live */
   .editbar .fmtgrp.active{ background:#fff; color:var(--ink); border-color:#fff; }
   @media (hover:hover){ .editbar .fmtgrp:hover{ background:#4a4a4a; color:#fff; } }
@@ -271,6 +282,8 @@
 
   /* ---- iPhone 11 and other narrow screens ---- */
   @media (max-width:820px){
+    body.edit-on .fmtbar.open{ left:10px !important; right:10px; max-width:none; }
+    body.edit-on .fmtbar.open::before{ display:none; }
     .layout { max-width:none; padding:0 16px 80px; }
     header { padding:14px 16px 8px; }
     header h1 { font-size:17px; }
@@ -309,13 +322,13 @@
   <button class="fmtgrp" data-group="para" title="Lists and indent">¶ Paragraph</button>
   <button class="fmtgrp" data-group="style" title="Chapter, Section, Headings, Body">⌗ Style</button>
   <button class="fmtgrp" data-group="insert" title="Table and image">＋ Insert</button>
-  <div class="fmtbar" id="fmtbar"><div class="fmtpanel" id="fmtpanel" style="display: none;"></div></div>
   <span class="grow"></span>
   <button data-act="undo" title="Undo last change">↶ Undo</button>
   <button data-act="delete" title="Delete the block at the cursor">🗑 Delete</button>
   <button class="primary" data-act="save" title="Save changes">💾 Save</button>
   <button data-act="done" title="Exit edit mode">Done</button>
 </div>
+<div class="fmtbar" id="fmtbar"><div class="fmtpanel" id="fmtpanel" style="display: none;"></div></div>
 <div class="tabbar"><div class="tabs" id="tabs"><button class="tabbtn" data-page="tp1"><span class="tname">PMP Notes</span><span class="x" title="Delete tab">✕</span></button><button class="tabbtn" data-page="tp2"><span class="tname">Investment</span><span class="x" title="Delete tab">✕</span></button><button class="tabbtn" data-page="tp3"><span class="tname">Vocab</span><span class="x" title="Delete tab">✕</span></button><button class="tabbtn" data-page="tp4"><span class="tname">Random thoughts</span><span class="x" title="Delete tab">✕</span></button><button class="tabbtn" data-page="tp5"><span class="tname">Weddings thoughts 💅</span><span class="x" title="Delete tab">✕</span></button><button class="tabbtn active" data-page="tp7"><span class="tname">to do</span><span class="x" title="Delete tab">✕</span></button></div><button class="addtab" id="addTab" title="Add a tab">＋ Tab</button></div>
 <div class="searchbar"><div class="note-search-wrap"><input type="text" id="noteSearch" class="note-search" placeholder="🔍 Search this tab…"><button type="button" id="noteSearchClear" class="note-clear" title="Clear search">✕</button></div><span class="note-count" id="noteSearchCount"></span></div>
 </div>
@@ -684,7 +697,7 @@
     clone.querySelectorAll('.note-img.sel').forEach(el=>el.classList.remove('sel'));
     const ib=clone.querySelector('#imgbar'); if(ib) ib.classList.remove('show');
     const ih=clone.querySelector('#imgHandle'); if(ih) ih.classList.remove('show');
-    var fb2=clone.querySelector('#fmtbar'); if(fb2) fb2.classList.remove('open'); var fp2=clone.querySelector('#fmtpanel'); if(fp2){ fp2.innerHTML=''; fp2.style.display='none'; } clone.querySelectorAll('.fmtgrp.active').forEach(function(el){el.classList.remove('active');});
+    var fb2=clone.querySelector('#fmtbar'); if(fb2){ fb2.classList.remove('open'); fb2.removeAttribute('style'); } var fp2=clone.querySelector('#fmtpanel'); if(fp2){ fp2.innerHTML=''; fp2.style.display='none'; } clone.querySelectorAll('.fmtgrp.active').forEach(function(el){el.classList.remove('active');});
     rebuildToc(clone);
     return '<!DOCTYPE html>\n' + clone.outerHTML + '\n';
   }
@@ -777,7 +790,33 @@
       return items;
     }
     function renderPanel(g){ const arr=groupItems(g); panel.innerHTML=arr.map(function(o){ if(o.sep) return '<span class="fsep"></span>'; var a='',cls=''; if(o.cmd)a='data-cmd="'+o.cmd+'"'; else if(o.block){a='data-block="'+o.block+'"';cls=' class="wide"';} else if(o.act){a='data-act="'+o.act+'"';cls=' class="wide"';} else if(o.todo){a='data-todo="1"';cls=' class="wide"';} else if(o.tbl){a='data-tbl="'+o.tbl+'"';cls=' class="wide"';} else if(o.imgsize)a='data-imgsize="'+o.imgsize+'"'; else if(o.imgalign)a='data-imgalign="'+o.imgalign+'"'; else if(o.imgdel)a='data-imgdel="1"'; else if(o.color)a='data-color="'+o.color+'" style="color:'+o.color+'"'; else if(o.hilite)a='data-hilite="'+o.hilite+'"'+(o.hilite!=='transparent'?' style="background:'+o.hilite+'"':''); else if(o.liststyle)a='data-liststyle="'+o.liststyle+'"'; else if(o.size)a='data-size="'+o.size+'"'; return '<button type="button"'+cls+' '+a+' title="'+o.t+'">'+o.label+'</button>'; }).join(''); panel.style.display=arr.length?'flex':'none'; }
-    function setGroup(g){ var groups=document.querySelectorAll('.fmtgrp'); if(activeGroup===g){ activeGroup=null; panel.style.display='none'; fmtbar.classList.remove('open'); groups.forEach(function(x){x.classList.remove('active');}); return; } activeGroup=g; groups.forEach(function(x){ x.classList.toggle('active', x.dataset.group===g); }); renderPanel(g); fmtbar.classList.add('open'); }
+    function placeDropdown(g){
+      var btn=document.querySelector('.fmtgrp[data-group="'+g+'"]');
+      var bar=document.getElementById('editbar');
+      var top=document.querySelector('.topbar');
+      if(!btn||!bar||!top) return;
+      var tb=top.getBoundingClientRect(), bb=btn.getBoundingClientRect(), eb=bar.getBoundingClientRect();
+      fmtbar.style.top=(eb.bottom-tb.top+6)+'px';
+      var w=fmtbar.offsetWidth||260;
+      var want=bb.left-tb.left;                               // line up with the group
+      var max=Math.max(10, tb.width-w-10);
+      var left=Math.max(10, Math.min(want, max));
+      fmtbar.style.left=left+'px';
+      fmtbar.style.setProperty('--arrow', Math.max(10, Math.min((bb.left-tb.left)-left+14, w-20))+'px');
+    }
+    function setGroup(g){
+      var groups=document.querySelectorAll('.fmtgrp');
+      if(activeGroup===g){ activeGroup=null; panel.style.display='none'; fmtbar.classList.remove('open');
+        groups.forEach(function(x){x.classList.remove('active');}); return; }
+      activeGroup=g;
+      groups.forEach(function(x){ x.classList.toggle('active', x.dataset.group===g); });
+      renderPanel(g);
+      fmtbar.classList.add('open');
+      placeDropdown(g);
+    }
+    window.addEventListener('resize', function(){ if(activeGroup) placeDropdown(activeGroup); });
+    var _eb2=document.getElementById('editbar');
+    if(_eb2) _eb2.addEventListener('scroll', function(){ if(activeGroup) placeDropdown(activeGroup); });
     function setBlock(type){ const sel=window.getSelection(); if(!sel||!sel.rangeCount) return; let n=sel.anchorNode; if(n&&n.nodeType===3)n=n.parentElement; const block=(n&&n.closest)?n.closest('#main h2,#main h3,#main h4,#main h5,#main p,#main li'):null; if(!block){ toast('Click inside the text you want to restyle first.'); return; } snapshot(); const map={part:['h2','part'],sec:['h3','sec'],h1:['h4','sub'],h2:['h5','subsub'],body:['p','doc']}; const cfg=map[type]; if(!cfg) return; const el=document.createElement(cfg[0]); el.className=cfg[1]; while(block.firstChild) el.appendChild(block.firstChild); stripBlockStyling(el); if(!el.textContent.trim()&&!el.querySelector('img')){ el.innerHTML=''; el.setAttribute('data-ph', PH_FOR_TYPE[type]||'Write here…'); } block.replaceWith(el); const r=document.createRange(); r.selectNodeContents(el); r.collapse(false); sel.removeAllRanges(); sel.addRange(r); rebuildToc(document); refreshObserver(); }
     function placeCaretEnd(el){ const r=document.createRange(); r.selectNodeContents(el); r.collapse(false); const s=window.getSelection(); s.removeAllRanges(); s.addRange(r); }
     function makeTodo(){ const sel=window.getSelection(); if(!sel||!sel.rangeCount) return; let n=sel.anchorNode; if(n&&n.nodeType===3)n=n.parentElement; const block=(n&&n.closest)?n.closest('#main p, #main li, #main h2,#main h3,#main h4,#main h5'):null; if(!block) return; snapshot(); if(block.classList.contains('todo')){ const q=document.createElement('p'); q.className='doc'; const txt=block.querySelector('.todo-text'); if(txt){ while(txt.firstChild) q.appendChild(txt.firstChild); } if(!q.textContent.trim()) q.setAttribute('data-ph','Write here…'); block.replaceWith(q); placeCaretEnd(q); return; } const p=document.createElement('p'); p.className='todo'; const cb=document.createElement('input'); cb.type='checkbox'; cb.className='todo-box'; cb.setAttribute('contenteditable','false'); const span=document.createElement('span'); span.className='todo-text'; while(block.firstChild) span.appendChild(block.firstChild); if(!span.textContent.trim()) span.setAttribute('data-ph','To-do item'); p.appendChild(cb); p.appendChild(span); block.replaceWith(p); placeCaretEnd(span); }
@@ -801,7 +840,9 @@
     if(window.matchMedia && window.matchMedia('(hover:hover)').matches){
       document.addEventListener('mouseover', function(e){
         if(!document.body.classList.contains('edit-on')) return;
-        var g=e.target.closest && e.target.closest('.fmtgrp');
+        var t=e.target; if(!t||!t.closest) return;
+        if(t.closest('#fmtbar')) return;          // inside the panel: leave it alone
+        var g=t.closest('.fmtgrp');
         if(g && g.dataset.group!==activeGroup) setGroup(g.dataset.group);
       });
     }
@@ -811,7 +852,7 @@
       const b=e.target.closest('button'); if(!b) return; const d=b.dataset;
       if(d.act==='image'){ addImage(); return; }
       if(d.act==='table'){ addTable(); return; }
-      if(d.block){ setBlock(d.block); return; }
+      if(d.block){ setBlock(d.block); if(activeGroup) setGroup(activeGroup); return; }
       if(d.todo){ makeTodo(); return; }
       if(d.tbl){ tblOp(d.tbl); return; }
       if(d.imgsize){ if(selImg) setPct(parseInt(d.imgsize,10)); else toast('Click an image first, then set its size.'); return; }
